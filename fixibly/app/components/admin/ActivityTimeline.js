@@ -1,6 +1,6 @@
 // src/components/admin/ActivityTimeline.jsx
 import React from "react";
-import StatusBadge from "../common/StatusBadge";
+import StatusBadge from "../dispatcher-admin/StatusBadge";
 import { FiCalendar, FiUser } from "react-icons/fi";
 
 const ActivityTimeline = ({ logs }) => (

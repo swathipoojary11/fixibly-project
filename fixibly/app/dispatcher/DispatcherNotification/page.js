@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useAppStore } from "../../context/AppStore";
 import NotificationCard from "../../components/admin/NotificationCard";
-import EmptyState from "../../components/common/EmptyState";
+import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
 
 const TABS = ["All", "Unread", "Read"];

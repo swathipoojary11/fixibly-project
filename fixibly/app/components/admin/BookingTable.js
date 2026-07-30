@@ -1,6 +1,6 @@
 // src/components/admin/BookingTable.jsx
 import React, { useState } from "react";
-import StatusBadge from "../common/StatusBadge";
+import StatusBadge from "../dispatcher-admin/StatusBadge";
 import { FiEye, FiChevronUp, FiChevronDown } from "react-icons/fi";
 
 const BookingTable = ({ bookings, onView }) => {

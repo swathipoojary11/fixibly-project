@@ -2,9 +2,9 @@
 import React, { useState, useMemo } from "react";
 import { activityLogs } from "../../data/activityLogs";
 import ActivityTimeline from "../../components/admin/ActivityTimeline";
-import SearchBar from "../../components/common/SearchBar";
-import FilterBar from "../../components/common/FilterBar";
-import EmptyState from "../../components/common/EmptyState";
+import SearchBar from "../../components/dispatcher-admin/SearchBar";
+import FilterBar from "../../components/dispatcher-admin/FilterBar";
+import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiActivity, FiArrowLeft } from "react-icons/fi";
 
 const ActivityLog = ({ onBack }) => {

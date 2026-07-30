@@ -4,7 +4,7 @@ export default function AdminRouteLayout({ children }) {
   return (
     <>
       <div className="min-h-screen bg-gray-50 text-gray-900">{children}</div>
-      <style jsx global>{`
+      <style global jsx>{`
         .ff-card {
           background: #ffffff;
           border-radius: 0.875rem;
