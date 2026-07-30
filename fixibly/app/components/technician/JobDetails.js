@@ -82,7 +82,7 @@ function JobDetails() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F7F7F7] text-[#202020] font-sans pb-20">
+    <div className="min-h-screen bg-[#F7F7F7] text-[#202020] font-sans">
       {/* Top Nav */}
       <div className="bg-white border-b border-[#ECECEC] sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
