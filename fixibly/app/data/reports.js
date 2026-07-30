@@ -1,0 +1,62 @@
+// src/data/reports.js
+// Replace with API: GET /api/reports?period=daily|weekly|monthly
+
+export const reports = {
+  daily: {
+    period: "Today, Jan 15 2025",
+    totalBookings: 42,
+    completedJobs: 18,
+    cancelledJobs: 3,
+    emergencyJobs: 2,
+    expectedRevenue: 18500,
+    avgBookingValue: 1850,
+    topTechnician: "Anil Sharma",
+    topCategory: "Electrician",
+    completionRate: 85.7,
+    technicianPerformance: [
+      { name: "Anil Sharma", completed: 5, rating: 4.9 },
+      { name: "Rajesh Kumar", completed: 4, rating: 4.8 },
+      { name: "Suresh Nair", completed: 3, rating: 4.7 },
+      { name: "Mohan Das", completed: 3, rating: 4.6 },
+      { name: "Sanjay Pillai", completed: 3, rating: 4.5 },
+    ],
+  },
+  weekly: {
+    period: "Jan 9 – Jan 15, 2025",
+    totalBookings: 220,
+    completedJobs: 189,
+    cancelledJobs: 14,
+    emergencyJobs: 11,
+    expectedRevenue: 98000,
+    avgBookingValue: 1820,
+    topTechnician: "Rajesh Kumar",
+    topCategory: "Electrician",
+    completionRate: 85.9,
+    technicianPerformance: [
+      { name: "Rajesh Kumar", completed: 25, rating: 4.8 },
+      { name: "Anil Sharma", completed: 22, rating: 4.9 },
+      { name: "Suresh Nair", completed: 18, rating: 4.7 },
+      { name: "Sanjay Pillai", completed: 17, rating: 4.5 },
+      { name: "Mohan Das", completed: 12, rating: 4.6 },
+    ],
+  },
+  monthly: {
+    period: "January 2025",
+    totalBookings: 870,
+    completedJobs: 748,
+    cancelledJobs: 52,
+    emergencyJobs: 38,
+    expectedRevenue: 380000,
+    avgBookingValue: 1850,
+    topTechnician: "Rajesh Kumar",
+    topCategory: "Electrician",
+    completionRate: 86.0,
+    technicianPerformance: [
+      { name: "Rajesh Kumar", completed: 98, rating: 4.8 },
+      { name: "Anil Sharma", completed: 92, rating: 4.9 },
+      { name: "Suresh Nair", completed: 78, rating: 4.7 },
+      { name: "Sanjay Pillai", completed: 72, rating: 4.5 },
+      { name: "Vijay Menon", completed: 68, rating: 4.6 },
+    ],
+  },
+};
