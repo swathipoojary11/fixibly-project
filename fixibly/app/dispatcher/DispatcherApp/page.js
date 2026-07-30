@@ -48,7 +48,7 @@ const DispatcherApp = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       {/* ── Navbar ── */}
       <header className="bg-dark-900 text-white shrink-0 shadow-lg z-40">
         <div className="px-4 lg:px-6 flex items-center justify-between h-14">

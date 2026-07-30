@@ -173,7 +173,7 @@ const BookingDetailModal = ({ booking, onClose, onAssign, onMarkCompleted }) => 
         </div>
       </div>
     </div>
-  </div>
+    </div>
   </Portal>
 );
 

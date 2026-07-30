@@ -9,7 +9,9 @@ import Portal from "../../components/common/Portal";
 
 const ReassignModal = ({ booking, techs, onAssign, onClose }) => {
   const [search, setSearch] = useState("");
-  const filtered = techs.filter(t =>
+  if (!booking) return null;
+
+  const filtered = (Array.isArray(techs) ? techs : []).filter(t =>
     t.availability === "Available" &&
     (!search || t.name.toLowerCase().includes(search.toLowerCase()))
   ).sort((a, b) => b.avgRating - a.avgRating);
@@ -23,7 +25,7 @@ const ReassignModal = ({ booking, techs, onAssign, onClose }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-lg">Reassign Technician</p>
-              <p className="text-xs text-white/70">{booking.id} · {booking.category}</p>
+              <p className="text-xs text-white/70">{booking?.id ?? "Unknown"} · {booking?.category ?? "Unknown"}</p>
             </div>
             <button onClick={onClose} className="p-2 rounded-lg bg-white/20 hover:bg-white/30"><FiX className="w-5 h-5" /></button>
           </div>
@@ -69,18 +71,37 @@ const CancelledBookings = ({ onBack }) => {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
+  const safeCancelledBookings = useMemo(() => {
+    return (Array.isArray(cancelledBookings) ? cancelledBookings : [])
+      .filter(Boolean)
+      .map((entry, index) => ({
+        ...entry,
+        id: entry.id ?? `CB-${index + 1}`,
+        customer: entry.customer ?? "Unknown",
+        cancelledBy: entry.cancelledBy ?? "Customer",
+        needsReassign: entry.needsReassign ?? true,
+        reassignedTo: entry.reassignedTo ?? null,
+      }));
+  }, [cancelledBookings]);
+
   const filtered = useMemo(() => {
-    return cancelledBookings
+    return safeCancelledBookings
       .filter(b => b.cancelledBy === tab && (!search || [b.id, b.customer, b.technicianName].some(v => v?.toLowerCase().includes(search.toLowerCase()))))
       .sort((a, b) => sort === "latest" ? new Date(b.cancelledAt) - new Date(a.cancelledAt) : new Date(a.cancelledAt) - new Date(b.cancelledAt));
-  }, [cancelledBookings, tab, search, sort]);
+  }, [safeCancelledBookings, tab, search, sort]);
 
-  const byCustomer = cancelledBookings.filter(b => b.cancelledBy === "Customer").length;
-  const byTech = cancelledBookings.filter(b => b.cancelledBy === "Technician").length;
+  const byCustomer = safeCancelledBookings.filter(b => b.cancelledBy === "Customer").length;
+  const byTech = safeCancelledBookings.filter(b => b.cancelledBy === "Technician").length;
 
   const handleReassign = (tech) => {
-    reassignBooking(reassigning.id, tech);
-    showToast(`✅ ${reassigning.id} reassigned to ${tech.name}`);
+    const target = reassigning && typeof reassigning === "object" ? reassigning : null;
+    if (!target?.id) {
+      setReassigning(null);
+      return;
+    }
+
+    reassignBooking(target.id, tech);
+    showToast(`✅ ${target.id} reassigned to ${tech.name}`);
     setReassigning(null);
   };
 
@@ -127,7 +148,7 @@ const CancelledBookings = ({ onBack }) => {
                 <p className="font-mono text-xs text-red-500 font-semibold">{b.id}</p>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">Cancelled</span>
-                  {b.needsReassign && !b.reassignedTo && (
+                  {(b.needsReassign ?? true) && !b.reassignedTo && (
                     <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">Needs Reassign</span>
                   )}
                 </div>
@@ -147,8 +168,8 @@ const CancelledBookings = ({ onBack }) => {
                   <p className="text-xs text-green-600 font-semibold">Reassigned to: {b.reassignedTo}</p>
                 </div>
               )}
-              {b.needsReassign && !b.reassignedTo && (
-                <button onClick={() => setReassigning(b)}
+              {(b.needsReassign ?? true) && !b.reassignedTo && (
+                <button onClick={() => setReassigning(b || null)}
                   className="mt-3 w-full py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors">
                   <FiRefreshCw className="w-3.5 h-3.5" /> Reassign Technician
                 </button>

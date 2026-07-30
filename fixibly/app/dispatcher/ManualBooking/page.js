@@ -93,13 +93,13 @@ const ManualBooking = ({ onBack }) => {
             <Field label="Customer Name *" error={errors.name}>
               <div className="relative">
                 <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input value={form.name} onChange={e => handleChange("name", e.target.value)} placeholder="Full name" className={`ff-input pl-9 ${errors.name ? "border-red-300 focus:ring-red-200" : ""}`} />
+                <input value={form.name} onChange={e => handleChange("name", e.target.value)} placeholder="Full name" className={`ff-input !pl-10 pr-3 ${errors.name ? "border-red-300 focus:ring-red-200" : ""}`} />
               </div>
             </Field>
             <Field label="Phone Number *" error={errors.phone}>
               <div className="relative">
                 <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input value={form.phone} onChange={e => handleChange("phone", e.target.value)} placeholder="10-digit number" maxLength={10} className={`ff-input pl-9 ${errors.phone ? "border-red-300 focus:ring-red-200" : ""}`} />
+                <input value={form.phone} onChange={e => handleChange("phone", e.target.value)} placeholder="10-digit number" maxLength={10} className={`ff-input !pl-10 pr-3 ${errors.phone ? "border-red-300 focus:ring-red-200" : ""}`} />
               </div>
             </Field>
           </div>
@@ -107,7 +107,7 @@ const ManualBooking = ({ onBack }) => {
           <Field label="Address *" error={errors.address}>
             <div className="relative">
               <FiMapPin className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-              <textarea value={form.address} onChange={e => handleChange("address", e.target.value)} placeholder="Full address" rows={2} className={`ff-input pl-9 resize-none ${errors.address ? "border-red-300 focus:ring-red-200" : ""}`} />
+              <textarea value={form.address} onChange={e => handleChange("address", e.target.value)} placeholder="Full address" rows={2} className={`ff-input !pl-10 pr-3 pt-3 resize-none ${errors.address ? "border-red-300 focus:ring-red-200" : ""}`} />
             </div>
           </Field>
 
@@ -115,7 +115,7 @@ const ManualBooking = ({ onBack }) => {
             <Field label="Service Category *" error={errors.category}>
               <div className="relative">
                 <FiTag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <select value={form.category} onChange={e => handleChange("category", e.target.value)} className={`ff-input pl-9 ${errors.category ? "border-red-300 focus:ring-red-200" : ""}`}>
+                <select value={form.category} onChange={e => handleChange("category", e.target.value)} className={`ff-input !pl-10 pr-3 ${errors.category ? "border-red-300 focus:ring-red-200" : ""}`}>
                   <option value="">Select category...</option>
                   {["Electrician", "Plumber", "AC Repair", "Carpenter", "Painter"].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -124,7 +124,7 @@ const ManualBooking = ({ onBack }) => {
             <Field label="Preferred Date *" error={errors.preferredDate}>
               <div className="relative">
                 <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input type="datetime-local" value={form.preferredDate} onChange={e => handleChange("preferredDate", e.target.value)} className={`ff-input pl-9 ${errors.preferredDate ? "border-red-300 focus:ring-red-200" : ""}`} />
+                <input type="datetime-local" value={form.preferredDate} onChange={e => handleChange("preferredDate", e.target.value)} className={`ff-input !pl-10 pr-3 ${errors.preferredDate ? "border-red-300 focus:ring-red-200" : ""}`} />
               </div>
             </Field>
           </div>
@@ -132,7 +132,7 @@ const ManualBooking = ({ onBack }) => {
           <Field label="Issue Description *" error={errors.issue}>
             <div className="relative">
               <FiFileText className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-              <textarea value={form.issue} onChange={e => handleChange("issue", e.target.value)} placeholder="Describe the issue in detail..." rows={3} className={`ff-input pl-9 resize-none ${errors.issue ? "border-red-300 focus:ring-red-200" : ""}`} />
+              <textarea value={form.issue} onChange={e => handleChange("issue", e.target.value)} placeholder="Describe the issue in detail..." rows={3} className={`ff-input !pl-10 pr-3 pt-3 resize-none ${errors.issue ? "border-red-300 focus:ring-red-200" : ""}`} />
             </div>
           </Field>
 

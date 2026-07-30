@@ -15,7 +15,18 @@ const AppContext = createContext(null);
 export function AppStore({ children }) {
   const [bookings, setBookings] = useState(initBookings);
   const [emergencies, setEmergencies] = useState(initEM);
-  const [cancelledBookings, setCancelledBookings] = useState(initCancelled);
+  const [cancelledBookings, setCancelledBookings] = useState(
+    (Array.isArray(initCancelled) ? initCancelled : [])
+      .filter(Boolean)
+      .map((entry, index) => ({
+        ...entry,
+        id: entry.id ?? `CB-${index + 1}`,
+        customer: entry.customer ?? "Unknown",
+        cancelledBy: entry.cancelledBy ?? "Customer",
+        needsReassign: entry.needsReassign ?? true,
+        reassignedTo: entry.reassignedTo ?? null,
+      }))
+  );
   const [technicians, setTechnicians] = useState(initTechs);
   const [adminNotifs, setAdminNotifs] = useState(initAdminNotifs);
   const [dispNotifs, setDispNotifs] = useState(initDispNotifs);
