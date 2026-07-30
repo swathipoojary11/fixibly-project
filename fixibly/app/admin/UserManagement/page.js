@@ -2,9 +2,9 @@
 import React, { useState, useMemo } from "react";
 import { customers, technicianUsers, dispatchers } from "../../data/users";
 import UserTable from "../../components/admin/UserTable";
-import SearchBar from "../../components/common/SearchBar";
-import ConfirmationModal from "../../components/common/ConfirmationModal";
-import EmptyState from "../../components/common/EmptyState";
+import SearchBar from "../../components/dispatcher-admin/SearchBar";
+import ConfirmationModal from "../../components/dispatcher-admin/ConfirmationModal";
+import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiUsers, FiX, FiArrowLeft } from "react-icons/fi";
 
 const TABS = [

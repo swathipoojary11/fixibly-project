@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useAppStore } from "../../context/AppStore";
-import StatusBadge from "../../components/common/StatusBadge";
+import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import { FiCheckCircle, FiCircle, FiMapPin, FiClock, FiUser, FiArrowLeft, FiNavigation, FiAlertCircle, FiSend } from "react-icons/fi";
 
 const STATUS_ACTIONS = [
@@ -119,7 +119,7 @@ const CurrentStatus = ({ onBack }) => {
                 {/* Location — dispatcher only, never shown to customer */}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
                   <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
-                    <FiMapPin className="w-3.5 h-3.5" /> Technician Location (Dispatcher Only — Not Shared with Customer)
+                    <FiMapPin className="w-3.5 h-3.5" /> Technician Location
                   </p>
                   {liveSelected.technicianLocation ? (
                     <div className="grid grid-cols-3 gap-2 text-xs">

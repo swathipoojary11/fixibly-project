@@ -1,6 +1,6 @@
 // src/components/admin/TechnicianCard.jsx
 import React from "react";
-import StatusBadge from "../common/StatusBadge";
+import StatusBadge from "../dispatcher-admin/StatusBadge";
 import { FiStar, FiClock, FiAlertCircle } from "react-icons/fi";
 
 const ProgressBar = ({ value, max = 100, color = "bg-primary" }) => (

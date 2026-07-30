@@ -1,9 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { useAppStore } from "../../context/AppStore";
-import StatusBadge from "../../components/common/StatusBadge";
+import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import { FiZap, FiX, FiPhone, FiMapPin, FiAlertTriangle, FiRadio, FiCheck, FiArrowLeft, FiArrowDown } from "react-icons/fi";
-import Portal from "../../components/common/Portal";
+import Portal from "../../components/dispatcher-admin/Portal";
 
 const EmergencyBookings = ({ onBack }) => {
   const { emergencies, technicians, assignTechnician, qualifyToNormal } = useAppStore();

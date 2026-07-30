@@ -1,6 +1,6 @@
 // src/components/admin/UserTable.jsx
 import React from "react";
-import StatusBadge from "../common/StatusBadge";
+import StatusBadge from "../dispatcher-admin/StatusBadge";
 import { FiEye, FiToggleLeft, FiToggleRight } from "react-icons/fi";
 
 const UserTable = ({ users, onView, onToggleStatus }) => (
