@@ -6,7 +6,6 @@ const authenticateUser = require("./middleware/authMiddleware");
 const authorizeRoles = require("./middleware/roleMiddleware");
 
 const authRoutes = require("./routes/authRoutes");
-
 const profileRoutes = require("./routes/profileRoutes");
 
 const app = express();
@@ -24,6 +23,7 @@ app.get("/", (req, res) => {
 // Authentication Routes
 app.use("/api/auth", authRoutes);
 
+// Profile Routes
 app.use("/api/profile", profileRoutes);
 
 // Protected Route
@@ -32,38 +32,6 @@ app.get("/api/protected", authenticateUser, (req, res) => {
         success: true,
         message: "You have accessed a protected route.",
         user: req.user
-    });
-});
-
-// Customer Route
-app.get("/api/customer", authenticateUser, authorizeRoles("Customer"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Customer!"
-    });
-});
-
-// Technician Route
-app.get("/api/technician", authenticateUser, authorizeRoles("Technician"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Technician!"
-    });
-});
-
-// Dispatcher Route
-app.get("/api/dispatcher", authenticateUser, authorizeRoles("Dispatcher"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Dispatcher!"
-    });
-});
-
-// Admin Route
-app.get("/api/admin", authenticateUser, authorizeRoles("Admin"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Admin!"
     });
 });
 
