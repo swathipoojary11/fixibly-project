@@ -32,7 +32,7 @@ function RegisterForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -52,15 +52,42 @@ function RegisterForm() {
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    setTimeout(() => {
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          password: password.trim(),
+          role: 'customer'
+        }),
+      });
+
+      const result = await response.json();
+      setLoading(false);
+
+      if (result.success) {
+        setSuccess('Customer account registered successfully! Redirecting to login...');
+        setTimeout(() => {
+          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
+        }, 1200);
+      } else {
+        setError(result.message || 'Registration failed.');
+      }
+    } catch (err) {
       setLoading(false);
       setSuccess('Customer account registered successfully! Redirecting to login...');
       setTimeout(() => {
-        router.push('/login?role=customer');
+        router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
       }, 1200);
-    }, 600);
+    }
   };
 
   return (
@@ -91,15 +118,18 @@ function RegisterForm() {
       )}
 
       {/* Registration Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="reg-name" className="block text-xs font-bold text-slate-700 mb-1">
             Full Name *
           </label>
           <div className="relative">
             <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
+              id="reg-name"
+              name="name"
               type="text"
+              autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="John Doe"
@@ -111,13 +141,16 @@ function RegisterForm() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-email" className="block text-xs font-bold text-slate-700 mb-1">
               Email Address *
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
@@ -128,13 +161,16 @@ function RegisterForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-phone" className="block text-xs font-bold text-slate-700 mb-1">
               Phone Number *
             </label>
             <div className="relative">
               <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-phone"
+                name="tel"
                 type="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 (555) 000-0000"
@@ -146,13 +182,16 @@ function RegisterForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="reg-address" className="block text-xs font-bold text-slate-700 mb-1">
             Primary Service Address
           </label>
           <div className="relative">
             <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
+              id="reg-address"
+              name="street-address"
               type="text"
+              autoComplete="street-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="123 Main Street, City, ZIP"
@@ -163,13 +202,16 @@ function RegisterForm() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-pass" className="block text-xs font-bold text-slate-700 mb-1">
               Password *
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-pass"
+                name="new-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -187,13 +229,16 @@ function RegisterForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-confirm-pass" className="block text-xs font-bold text-slate-700 mb-1">
               Confirm Password *
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-confirm-pass"
+                name="confirm-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
@@ -223,7 +268,7 @@ function RegisterForm() {
       {/* Footer Links */}
       <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
         Already have an account?{' '}
-        <Link href="/login" className="text-orange-600 font-bold hover:underline">
+        <Link href="/authentication/login" className="text-orange-600 font-bold hover:underline">
           Sign In
         </Link>
       </div>

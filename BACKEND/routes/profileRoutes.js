@@ -8,22 +8,10 @@ const {
     updateProfile
 } = require("../controllers/profileController");
 
+// View Profile
+router.get("/", authenticateUser, getProfile);
 
-
-// GET PROFILE
-router.get(
-    "/",
-    authenticateUser,
-    getProfile
-);
-
-
-// UPDATE PROFILE
-router.put(
-    "/",
-    authenticateUser,
-    updateProfile
-);
-
+// Update Profile
+router.put("/", authenticateUser, updateProfile);
 
 module.exports = router;

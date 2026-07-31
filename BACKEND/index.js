@@ -7,6 +7,8 @@ const authorizeRoles = require("./middleware/roleMiddleware");
 
 const authRoutes = require("./routes/authRoutes");
 
+const profileRoutes = require("./routes/profileRoutes");
+
 const app = express();
 
 app.use(cors());
@@ -21,6 +23,8 @@ app.get("/", (req, res) => {
 
 // Authentication Routes
 app.use("/api/auth", authRoutes);
+
+app.use("/api/profile", profileRoutes);
 
 // Protected Route
 app.get("/api/protected", authenticateUser, (req, res) => {
