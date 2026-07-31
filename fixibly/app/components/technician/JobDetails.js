@@ -5,6 +5,7 @@ import {
   MdArrowBack, MdBuild, MdLocationOn, MdPhone, MdPerson, MdAccessTime,
   MdCheckCircle, MdGpsFixed, MdReportProblem, MdAssignmentTurnedIn,
   MdCategory, MdCheck, MdNavigation, MdShield, MdHandyman, MdHourglassTop, MdDoneAll,
+  MdCancel,
 } from "react-icons/md";
 import { FiClock, FiAlertCircle } from "react-icons/fi";
 import useTechnicianStore from "../../technician/store/technicianStore";
@@ -14,24 +15,52 @@ function JobDetails() {
   const router = useRouter();
 
   const storeJobs  = useTechnicianStore((state) => state.assignedJobs) || [];
-  const matchedJob = storeJobs.find((j) => String(j.id) === String(id));
+  const cancelJobFn = useTechnicianStore((state) => state.cancelJob);
+  const matchedJob  = storeJobs.find((j) => String(j.id) === String(id));
+
+  // customer_approved_completion comes from the API via the store
+  const customerApproved = matchedJob?.customer_approved_completion || false;
 
   const job = {
-    id: id || "101",
-    jobCode: `#${id || "101"}`,
-    title:            matchedJob?.title    || "HVAC Compressor & Filter Maintenance",
-    category:         matchedJob?.category || "Cooling & Electrical Systems",
-    priority:         matchedJob?.priority || "High Priority",
-    customer:         matchedJob?.customer || "Rahul Sharma",
-    phone:            matchedJob?.phone    || "+91 98765 43210",
-    address:          matchedJob?.address  || "12 MG Road, Opp. City Center, Mangalore, KA 575001",
-    scheduledTime:    matchedJob?.time     || "10:30 AM (Today)",
-    problemDescription: matchedJob?.problem ||
+    id:   id || "101",
+    jobCode: matchedJob?.job_code ? `#${matchedJob.job_code}` : `#${id || "101"}`,
+    title:            matchedJob?.title           || "HVAC Compressor & Filter Maintenance",
+    category:         matchedJob?.category        || "Cooling & Electrical Systems",
+    priority:         matchedJob?.priority        || "High Priority",
+    customer:         matchedJob?.customer_name   || "Rahul Sharma",
+    phone:            matchedJob?.customer_phone  || "+91 98765 43210",
+    address:          matchedJob?.service_address || "12 MG Road, Opp. City Center, Mangalore, KA 575001",
+    scheduledTime:    matchedJob?.scheduled_at
+                        ? new Date(matchedJob.scheduled_at).toLocaleString()
+                        : "10:30 AM (Today)",
+    problemDescription: matchedJob?.description ||
       "AC compressor is making an unusual buzzing noise and failing to produce cold air following a power fluctuation. Technician must inspect the electrical terminals, capacitor, and refrigerant pressure levels.",
   };
 
-  const [currentStep, setCurrentStep]   = useState(-1);
+  // ── Cancel job modal state ─────────────────────────────────────────────────
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason]       = useState("");
+  const [cancelling, setCancelling]           = useState(false);
+
+  const [currentStep, setCurrentStep] = useState(-1);
   const setAvailability = useTechnicianStore((state) => state.setAvailability);
+
+  const handleCancelJob = async () => {
+    if (cancelReason.trim().length < 5) {
+      alert("Please provide a reason (at least 5 characters).");
+      return;
+    }
+    setCancelling(true);
+    try {
+      await cancelJobFn(parseInt(id), cancelReason.trim());
+      setShowCancelModal(false);
+      router.push("/technician");
+    } catch (err) {
+      alert(err.message || "Failed to cancel job.");
+    } finally {
+      setCancelling(false);
+    }
+  };
   const [location, setLocation]         = useState(null);
   const [gpsLoading, setGpsLoading]     = useState(false);
   const [checklist, setChecklist]       = useState({
@@ -65,9 +94,16 @@ function JobDetails() {
   };
 
   const handleNextStep = (targetStep) => {
-    if (targetStep === 1 || targetStep === 0) setAvailability("Busy");
+    if (targetStep === 1 || targetStep === 0) setAvailability("busy");
     if (targetStep === 2) captureGPSLocation();
-    if (targetStep === 4 && !isChecklistComplete) { alert("Please complete all inspection checklist items before completing the job."); return; }
+    if (targetStep === 4 && !isChecklistComplete) {
+      alert("Please complete all inspection checklist items before completing the job.");
+      return;
+    }
+    if (targetStep === 4 && !customerApproved) {
+      alert("Cannot complete job: waiting for customer approval. The customer must confirm completion first.");
+      return;
+    }
     setCurrentStep(targetStep);
   };
 
@@ -83,6 +119,50 @@ function JobDetails() {
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#202020] font-sans">
+
+      {/* ── Cancel Job Modal ──────────────────────────────────────────────── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-white rounded-[28px] p-8 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+                <MdCancel size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#202020]">Cancel Job</h3>
+                <p className="text-xs text-[#7B7B7B]">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-[#7B7B7B] mb-4">
+              Please provide a reason for cancelling <span className="font-bold text-[#202020]">{job.title}</span>.
+              The dispatcher will be notified.
+            </p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g. Personal emergency, equipment unavailable…"
+              rows={3}
+              className="w-full border border-[#ECECEC] rounded-2xl p-4 text-sm text-[#202020] resize-none focus:outline-none focus:border-red-400"
+            />
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setShowCancelModal(false); setCancelReason(""); }}
+                className="flex-1 border border-[#ECECEC] text-[#7B7B7B] py-3 rounded-2xl font-bold text-sm hover:bg-[#F7F7F7] transition"
+              >
+                Keep Job
+              </button>
+              <button
+                onClick={handleCancelJob}
+                disabled={cancelling || cancelReason.trim().length < 5}
+                className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-[#ECECEC] disabled:text-[#9A9A9A] text-white py-3 rounded-2xl font-bold text-sm transition"
+              >
+                {cancelling ? "Cancelling…" : "Confirm Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Nav */}
       <div className="bg-white border-b border-[#ECECEC] sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -91,6 +171,15 @@ function JobDetails() {
             <span>Back to Dashboard</span>
           </button>
           <div className="flex items-center gap-3">
+            {/* Cancel button — only show for assigned/accepted jobs */}
+            {currentStep <= 0 && (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-red-500 border border-red-200 bg-red-50 hover:bg-red-500 hover:text-white transition"
+              >
+                <MdCancel size={14} /> Cancel Job
+              </button>
+            )}
             <div className="px-5 py-2 rounded-full border-2 border-[#F54C0F] bg-[#FFF3EE] text-[#F54C0F] font-bold text-sm shadow-sm flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#F54C0F] animate-pulse"></span>
               <span>Job ID: {job.jobCode}</span>
@@ -232,10 +321,30 @@ function JobDetails() {
                             {idx === 2 && <button onClick={() => handleNextStep(3)} className="w-full bg-[#F54C0F] hover:bg-[#DB4206] text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2">Proceed to Inspection Checklist</button>}
                             {idx === 3 && (
                               <>
-                                <button onClick={() => handleNextStep(4)} disabled={!isChecklistComplete} className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${isChecklistComplete ? "bg-[#F54C0F] hover:bg-[#DB4206] text-white shadow-lg shadow-[#F54C0F]/20" : "bg-[#ECECEC] text-[#9A9A9A] cursor-not-allowed"}`}>
+                                {/* Complete button: needs BOTH checklist done AND customer approval */}
+                                <button
+                                  onClick={() => handleNextStep(4)}
+                                  disabled={!isChecklistComplete || !customerApproved}
+                                  className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                                    isChecklistComplete && customerApproved
+                                      ? "bg-[#F54C0F] hover:bg-[#DB4206] text-white shadow-lg shadow-[#F54C0F]/20"
+                                      : "bg-[#ECECEC] text-[#9A9A9A] cursor-not-allowed"
+                                  }`}
+                                >
                                   <MdDoneAll size={20} />Complete Job
                                 </button>
-                                {!isChecklistComplete && <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-xl mt-3 flex items-center gap-2"><FiAlertCircle className="shrink-0 text-amber-600 text-sm" />Complete all 5 inspection checklist items to unlock "Complete Job".</p>}
+                                {!isChecklistComplete && (
+                                  <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-xl mt-3 flex items-center gap-2">
+                                    <FiAlertCircle className="shrink-0 text-amber-600 text-sm" />
+                                    Complete all 5 checklist items first.
+                                  </p>
+                                )}
+                                {isChecklistComplete && !customerApproved && (
+                                  <p className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 p-3 rounded-xl mt-3 flex items-center gap-2">
+                                    <FiAlertCircle className="shrink-0 text-blue-600 text-sm" />
+                                    Waiting for customer to approve completion. You will be notified.
+                                  </p>
+                                )}
                               </>
                             )}
                             {idx === 4 && (
