@@ -1,70 +1,20 @@
-const express = require("express");
-const cors = require("cors");
-require("dotenv").config();
+const express=require('express');
+const cors =require('cors');
 
-const authenticateUser = require("./middleware/authMiddleware");
-const authorizeRoles = require("./middleware/roleMiddleware");
-
-const authRoutes = require("./routes/authRoutes");
-
-const app = express();
-
+const app=express();
 app.use(cors());
 app.use(express.json());
+app.post('/api/login',(request,response)=>{
+    const{email,password}=request.body;
 
-// Test Route
-app.get("/", (req, res) => {
-    res.json({
-        message: "FieldFlow Backend Running Successfully 🚀"
-    });
+     if (!email || !password) {
+    return res.status(400).json({ error: 'Missing email or password' });
+  }
+  return res.status(200).json({
+    message: 'login successful'
+  });
+
 });
-
-// Authentication Routes
-app.use("/api/auth", authRoutes);
-
-// Protected Route
-app.get("/api/protected", authenticateUser, (req, res) => {
-    res.json({
-        success: true,
-        message: "You have accessed a protected route.",
-        user: req.user
-    });
-});
-
-// Customer Route
-app.get("/api/customer", authenticateUser, authorizeRoles("Customer"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Customer!"
-    });
-});
-
-// Technician Route
-app.get("/api/technician", authenticateUser, authorizeRoles("Technician"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Technician!"
-    });
-});
-
-// Dispatcher Route
-app.get("/api/dispatcher", authenticateUser, authorizeRoles("Dispatcher"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Dispatcher!"
-    });
-});
-
-// Admin Route
-app.get("/api/admin", authenticateUser, authorizeRoles("Admin"), (req, res) => {
-    res.json({
-        success: true,
-        message: "Welcome Admin!"
-    });
-});
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.listen(3000,()=>{
+    console.log("server started ");
 });
