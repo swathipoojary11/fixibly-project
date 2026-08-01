@@ -1,4 +1,4 @@
-const supabase = require("../../config/supabase");
+const supabase = require("../config/supabase");
 
 // Get Logged-in User Profile
 const getProfile = async (req, res) => {
