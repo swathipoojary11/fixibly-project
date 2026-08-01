@@ -11,6 +11,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const dispatcherRoutes = require("./routes/dispatcherRoutes");
 const technicianRoutes = require("./routes/technicianRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const customerRoutes = require("./routes/customerRoute");
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/dispatcher", dispatcherRoutes);
 app.use("/api/technician", technicianRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/customer", customerRoutes);
 
 // Protected Test Route
 app.get("/api/protected", authenticateUser, (req, res) => {

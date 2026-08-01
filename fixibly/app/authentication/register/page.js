@@ -83,10 +83,7 @@ function RegisterForm() {
       }
     } catch (err) {
       setLoading(false);
-      setSuccess('Customer account registered successfully! Redirecting to login...');
-      setTimeout(() => {
-        router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
-      }, 1200);
+      setError(err.message || 'Unable to connect to registration server. Please check your internet connection or try again later.');
     }
   };
 

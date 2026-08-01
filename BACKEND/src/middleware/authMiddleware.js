@@ -24,7 +24,7 @@ const authenticateUser = (req, res, next) => {
         }
 
         // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fieldflow123456789");
 
         // Store logged-in user details
         req.user = decoded;
@@ -49,7 +49,6 @@ const verifyTechnician = (req, res, next) => {
     next();
 };
 
-module.exports = {
-    authenticateUser,
-    verifyTechnician
-};
+module.exports = authenticateUser;
+module.exports.authenticateUser = authenticateUser;
+module.exports.verifyTechnician = verifyTechnician;

@@ -52,7 +52,7 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center  gap-3">
           <button
-            onClick={() => router.push('/customer/profile')}
+            onClick={() => router.push('/components/ProfileCard.js')}
             className="bg-[#FF5500] hover:bg-[#e04b00] text-white text-xs font-bold px-4 py-2 h-10 w-10 rounded-4xl transition"
           >
             P
