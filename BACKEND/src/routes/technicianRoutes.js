@@ -3,7 +3,10 @@ import express from "express";
 
 import {
   profile,
+  dashboard,
   jobs,
+  jobDetails,
+  timeline,
   availability,
   location,
   jobStatus,
@@ -19,7 +22,13 @@ const router = express.Router();
 
 router.get("/profile", verifyTechnician, profile);
 
+router.get("/dashboard", verifyTechnician, dashboard);
+
 router.get("/jobs", verifyTechnician, jobs);
+
+router.get("/jobs/:id", verifyTechnician, jobDetails);
+
+router.get("/timeline", verifyTechnician, timeline);
 
 router.patch("/availability", verifyTechnician, availability);
 

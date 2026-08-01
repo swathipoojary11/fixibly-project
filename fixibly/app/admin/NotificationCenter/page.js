@@ -4,6 +4,7 @@ import { useAppStore } from "../../context/AppStore";
 import NotificationCard from "../../components/admin/NotificationCard";
 import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
+import { fetchApi } from "@/app/utils/api";
 
 const TABS = ["All", "Unread", "Read"];
 const CATEGORIES = ["All", "emergency", "booking", "delay", "cancel", "system"];
@@ -13,8 +14,21 @@ const NotificationCenter = ({ onBack }) => {
   const [tab, setTab] = useState("All");
   const [category, setCategory] = useState("All");
 
-  const markRead = (id) => setAdminNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
-  const markAllRead = () => setAdminNotifs(n => n.map(x => ({ ...x, read: true })));
+  const markRead = async (id) => {
+    setAdminNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
+    await fetchApi('/notifications/read', {
+      method: 'PATCH',
+      body: JSON.stringify({ notification_id: id })
+    }).catch(() => {});
+  };
+
+  const markAllRead = async () => {
+    setAdminNotifs(n => n.map(x => ({ ...x, read: true })));
+    await fetchApi('/notifications/read', {
+      method: 'PATCH',
+      body: JSON.stringify({})
+    }).catch(() => {});
+  };
 
   const filtered = adminNotifs.filter(n => {
     const matchTab = tab === "All" || (tab === "Unread" ? !n.read : n.read);

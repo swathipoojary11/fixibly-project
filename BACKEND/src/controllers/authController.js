@@ -1,16 +1,10 @@
-const supabase = require("../../config/supabase");
-const { hashPassword, comparePassword } = require("../../utils/hashPassword");
-const { generateToken } = require("../../utils/jwt");
-
-const {
-  successResponse,
-  errorResponse
-} = require("../../utils/response");
+import supabase from "../config/supabase.js";
+import { hashPassword, comparePassword } from "../utils/hashPassword.js";
+import { generateToken } from "../utils/jwt.js";
+import { successResponse, errorResponse } from "../utils/response.js";
 
 // Register User
-const registerUser = async (req, res) => {
-  console.log("Register API called");
-  console.log(req.body);
+export const registerUser = async (req, res) => {
   try {
     const {
       full_name,
@@ -21,7 +15,6 @@ const registerUser = async (req, res) => {
       role
     } = req.body;
 
-    // Validate required fields
     if (!full_name || !email || !password || !role) {
       return errorResponse(res, 400, "Please fill all required fields.");
     }
@@ -29,24 +22,24 @@ const registerUser = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Check if email already exists
+    // Check if email exists
     const { data: existingUser } = await supabase
       .from("users")
       .select("email")
       .ilike("email", cleanEmail)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       return errorResponse(res, 400, "Email already registered.");
     }
 
-    // Get role_id (case-insensitive search with default role fallback)
-    let roleId = null;
+    // Role mapping
+    let roleId = 1;
     const { data: roleData } = await supabase
       .from("roles")
       .select("role_id")
       .ilike("role_name", role)
-      .single();
+      .maybeSingle();
 
     if (roleData) {
       roleId = roleData.role_id;
@@ -60,11 +53,9 @@ const registerUser = async (req, res) => {
       roleId = roleMap[role.toLowerCase()] || 1;
     }
 
-    // Encrypt password
     const encryptedPassword = await hashPassword(cleanPassword);
 
-    // Insert user
-    const { data, error } = await supabase
+    const { data: newUser, error } = await supabase
       .from("users")
       .insert([
         {
@@ -76,10 +67,30 @@ const registerUser = async (req, res) => {
           role_id: roleId
         }
       ])
-      .select();
+      .select()
+      .single();
 
     if (error) {
       return errorResponse(res, 500, error.message);
+    }
+
+    // If registered as technician, ensure record exists in technicians table
+    if (roleId === 2) {
+      const { data: categoryData } = await supabase
+        .from("service_categories")
+        .select("category_id")
+        .limit(1)
+        .single();
+        
+      await supabase.from("technicians").insert([
+        {
+          user_id: newUser.user_id,
+          category_id: categoryData?.category_id || 1,
+          experience: 3,
+          rating: 5.0,
+          availability_status: "Available"
+        }
+      ]);
     }
 
     return successResponse(
@@ -89,19 +100,15 @@ const registerUser = async (req, res) => {
     );
 
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    return errorResponse(res, 500, err.message);
   }
 };
 
 // Login User
-const loginUser = async (req, res) => {
+export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check required fields
     if (!email || !password) {
       return errorResponse(
         res,
@@ -113,12 +120,11 @@ const loginUser = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Find user by email (case-insensitive search)
     const { data: user, error } = await supabase
       .from("users")
-      .select("*")
+      .select("*, roles(role_name)")
       .ilike("email", cleanEmail)
-      .single();
+      .maybeSingle();
 
     if (error || !user) {
       return errorResponse(
@@ -128,20 +134,22 @@ const loginUser = async (req, res) => {
       );
     }
 
-    // Compare password
+    if (!user.is_active) {
+      return errorResponse(res, 403, "Account is deactivated. Contact admin.");
+    }
+
     const isMatch = await comparePassword(cleanPassword, user.password_hash);
 
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid email or password."
-      });
+      return errorResponse(
+        res,
+        401,
+        "Invalid email or password."
+      );
     }
 
-    // Generate JWT
     const token = generateToken(user);
 
-    // Send response
     return successResponse(
       res,
       200,
@@ -152,7 +160,8 @@ const loginUser = async (req, res) => {
           user_id: user.user_id,
           full_name: user.full_name,
           email: user.email,
-          role_id: user.role_id
+          role_id: user.role_id,
+          role: user.roles?.role_name || (user.role_id === 1 ? 'Customer' : user.role_id === 2 ? 'Technician' : user.role_id === 3 ? 'Dispatcher' : 'Admin')
         }
       }
     );
@@ -162,7 +171,4 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = {
-  registerUser,
-  loginUser
-};
+export default { registerUser, loginUser };

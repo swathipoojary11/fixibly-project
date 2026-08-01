@@ -8,4 +8,5 @@ const supabase = createClient(
     process.env.SUPABASE_KEY
 );
 
+export const supabaseAdmin = supabase;
 export default supabase;

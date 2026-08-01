@@ -24,7 +24,7 @@ const useTechnicianStore = create((set, get) => ({
   notifications: [],
   unreadCount:   0,
   selectedJob:   null,
-  availability:  "available",
+  availability:  "Available",
   loading:       false,
   error:         null,
 
@@ -33,39 +33,54 @@ const useTechnicianStore = create((set, get) => ({
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
   setSelectedJob:  (job)    => set({ selectedJob: job }),
-  setAvailability: (status) => set({ availability: status }),
+  setAvailability: async (status) => {
+    set({ availability: status });
+    const token = get().token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (token) {
+      fetch(`${API}/technician/availability`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      }).catch(() => {});
+    }
+  },
 
   // ── Fetch all dashboard data ───────────────────────────────────────────────
   fetchAll: async () => {
-    const { token } = get();
+    let token = get().token;
+    if (!token && typeof window !== 'undefined') {
+      token = localStorage.getItem('token');
+      if (token) set({ token });
+    }
     if (!token) return;
+
     set({ loading: true, error: null });
     try {
       const [profile, dashboard, jobs, emergency, timeline, notifications] =
         await Promise.all([
-          apiFetch("/technician/profile",       token),
-          apiFetch("/technician/dashboard",     token),
-          apiFetch("/technician/jobs",          token),
-          apiFetch("/technician/emergency",     token),
-          apiFetch("/technician/timeline",      token),
-          apiFetch("/technician/notifications", token),
+          apiFetch("/technician/profile",       token).catch(() => null),
+          apiFetch("/technician/dashboard",     token).catch(() => null),
+          apiFetch("/technician/jobs",          token).catch(() => []),
+          apiFetch("/technician/emergency",     token).catch(() => null),
+          apiFetch("/technician/timeline",      token).catch(() => []),
+          apiFetch("/technician/notifications", token).catch(() => []),
         ]);
 
       set({
-        technician:    profile,
+        technician:    profile || null,
         stats: {
-          activeJobs:         parseInt(dashboard.active_jobs)    || 0,
-          completedToday:     parseInt(dashboard.completed_today) || 0,
-          emergencyRequests:  parseInt(dashboard.emergency_count) || 0,
+          activeJobs:         parseInt(dashboard?.active_jobs)    || (Array.isArray(jobs) ? jobs.length : 0),
+          completedToday:     parseInt(dashboard?.completed_today) || 0,
+          emergencyRequests:  parseInt(dashboard?.emergency_count) || (Array.isArray(emergency) ? emergency.length : 0),
         },
         assignedJobs:  Array.isArray(jobs) ? jobs : [],
-        emergencyJob:  emergency || null,   // null when no active emergency
+        emergencyJob:  Array.isArray(emergency) ? emergency[0] : (emergency || null),
         timeline:      Array.isArray(timeline) ? timeline : [],
         notifications: Array.isArray(notifications) ? notifications : [],
         unreadCount:   Array.isArray(notifications)
-                         ? notifications.filter((n) => !n.is_read).length
+                         ? notifications.filter((n) => !n.is_read && !n.read).length
                          : 0,
-        availability:  profile?.availability || "available",
+        availability:  profile?.availability || profile?.availability_status || "Available",
         loading:       false,
       });
     } catch (err) {
@@ -75,20 +90,20 @@ const useTechnicianStore = create((set, get) => ({
 
   // ── Fetch notifications only (for polling) ─────────────────────────────────
   fetchNotifications: async () => {
-    const { token } = get();
+    let token = get().token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
     if (!token) return;
     try {
       const data = await apiFetch("/technician/notifications", token);
       set({
         notifications: Array.isArray(data) ? data : [],
-        unreadCount:   Array.isArray(data) ? data.filter((n) => !n.is_read).length : 0,
+        unreadCount:   Array.isArray(data) ? data.filter((n) => !n.is_read && !n.read).length : 0,
       });
     } catch (_) {}
   },
 
   // ── Mark notifications read ────────────────────────────────────────────────
   markNotificationsRead: async (notificationId) => {
-    const { token } = get();
+    let token = get().token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
     if (!token) return;
     await fetch(`${API}/technician/notifications/read`, {
       method:  "PATCH",
@@ -97,25 +112,24 @@ const useTechnicianStore = create((set, get) => ({
     });
     set((state) => ({
       notifications: state.notifications.map((n) =>
-        notificationId ? (n.id === notificationId ? { ...n, is_read: true } : n) : { ...n, is_read: true }
+        notificationId ? (n.id === notificationId ? { ...n, is_read: true, read: true } : n) : { ...n, is_read: true, read: true }
       ),
       unreadCount: 0,
     }));
   },
 
-  // ── Cancel a job ───────────────────────────────────────────────────────────
+  // ── Cancel / Reject a job ──────────────────────────────────────────────────
   cancelJob: async (jobId, reason) => {
-    const { token } = get();
-    const res = await fetch(`${API}/technician/jobs/${jobId}/cancel`, {
-      method:  "POST",
+    let token = get().token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    const res = await fetch(`${API}/technician/jobs/${jobId}/reject`, {
+      method:  "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body:    JSON.stringify({ reason }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.message || "Cancel failed");
-    // Remove cancelled job from local list
     set((state) => ({
-      assignedJobs: state.assignedJobs.filter((j) => j.id !== jobId),
+      assignedJobs: state.assignedJobs.filter((j) => (j.id !== jobId && j.booking_id !== jobId)),
     }));
     return json;
   },

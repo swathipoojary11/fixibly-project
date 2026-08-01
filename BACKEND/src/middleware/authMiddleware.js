@@ -1,11 +1,9 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
-const authenticateUser = (req, res, next) => {
+export const authenticateUser = (req, res, next) => {
     try {
-        // Get Authorization Header
         const authHeader = req.headers.authorization;
 
-        // Check if token exists
         if (!authHeader) {
             return res.status(401).json({
                 success: false,
@@ -13,7 +11,6 @@ const authenticateUser = (req, res, next) => {
             });
         }
 
-        // Expected format: Bearer <token>
         const token = authHeader.split(" ")[1];
 
         if (!token) {
@@ -23,13 +20,8 @@ const authenticateUser = (req, res, next) => {
             });
         }
 
-        // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // Store logged-in user details
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fieldflow123456789");
         req.user = decoded;
-
-        // Continue to next function
         next();
 
     } catch (error) {
@@ -40,4 +32,22 @@ const authenticateUser = (req, res, next) => {
     }
 };
 
-module.exports = authenticateUser;
+export const verifyTechnician = (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ success: false, message: "Access denied. No token provided." });
+        }
+        const token = authHeader.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ success: false, message: "Invalid token format." });
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fieldflow123456789");
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: "Invalid or expired token." });
+    }
+};
+
+export default authenticateUser;

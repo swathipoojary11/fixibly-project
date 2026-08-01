@@ -4,15 +4,29 @@ import { useAppStore } from "../../context/AppStore";
 import NotificationCard from "../../components/admin/NotificationCard";
 import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
+import { fetchApi } from "@/app/utils/api";
 
 const TABS = ["All", "Unread", "Read"];
 
 const DispatcherNotifications = ({ onBack }) => {
-  const { dispNotifs, setDispNotifs } = useAppStore();
+  const { dispNotifs, setDispNotifs, refreshAllData } = useAppStore();
   const [tab, setTab] = useState("All");
 
-  const markRead = (id) => setDispNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
-  const markAllRead = () => setDispNotifs(n => n.map(x => ({ ...x, read: true })));
+  const markRead = async (id) => {
+    setDispNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
+    await fetchApi('/notifications/read', {
+      method: 'PATCH',
+      body: JSON.stringify({ notification_id: id })
+    }).catch(() => {});
+  };
+
+  const markAllRead = async () => {
+    setDispNotifs(n => n.map(x => ({ ...x, read: true })));
+    await fetchApi('/notifications/read', {
+      method: 'PATCH',
+      body: JSON.stringify({})
+    }).catch(() => {});
+  };
 
   const filtered = dispNotifs.filter(n => tab === "All" || (tab === "Unread" ? !n.read : n.read));
   const unreadCount = dispNotifs.filter(n => !n.read).length;

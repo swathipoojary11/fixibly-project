@@ -33,20 +33,21 @@ function LoginForm() {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (queryRole) setRole(queryRole);
+    if (queryRole) setRole(queryRole.toLowerCase());
     if (queryEmail) setEmail(queryEmail);
   }, [queryRole, queryEmail]);
 
-  const navigateToDashboard = (roleId, selectedRole) => {
-    const activeRole = (selectedRole || 'customer').toLowerCase();
+  const navigateToDashboard = (userObj, selectedRole) => {
+    const roleId = userObj?.role_id;
+    const roleName = (userObj?.role || selectedRole || 'customer').toLowerCase();
     
-    if (roleId === 1 || activeRole === 'customer') {
+    if (roleId === 1 || roleName === 'customer') {
       router.push('/customer');
-    } else if (roleId === 2 || activeRole === 'technician') {
+    } else if (roleId === 2 || roleName === 'technician') {
       router.push('/technician/dashboard');
-    } else if (roleId === 3 || activeRole === 'dispatcher') {
+    } else if (roleId === 3 || roleName === 'dispatcher') {
       router.push('/dispatcher/DispatcherDashboard');
-    } else if (roleId === 4 || activeRole === 'admin') {
+    } else if (roleId === 4 || roleName === 'admin') {
       router.push('/admin/AdminDashboard');
     } else {
       router.push('/customer');
@@ -55,7 +56,6 @@ function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError('');
     setSuccess('');
 
@@ -73,8 +73,8 @@ function LoginForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
-          password,
+          email: email.trim(),
+          password: password.trim(),
         }),
       });
 
@@ -88,34 +88,14 @@ function LoginForm() {
         }
         setSuccess(result.message || 'Login successful!');
         setTimeout(() => {
-          navigateToDashboard(result.data?.user?.role_id, role);
-        }, 800);
+          navigateToDashboard(result.data?.user, role);
+        }, 600);
       } else {
-        // Handle custom / demo role account sign-ins cleanly
-        const userSession = {
-          email,
-          role,
-          full_name: email.split('@')[0],
-        };
-        localStorage.setItem('user', JSON.stringify(userSession));
-        setSuccess(`Signed in as ${role.toUpperCase()}! Redirecting to dashboard...`);
-        setTimeout(() => {
-          navigateToDashboard(null, role);
-        }, 800);
+        setError(result.message || 'Invalid email or password.');
       }
     } catch (err) {
       setLoading(false);
-      // Demo / offline fallback mode
-      const userSession = {
-        email,
-        role,
-        full_name: email.split('@')[0],
-      };
-      localStorage.setItem('user', JSON.stringify(userSession));
-      setSuccess(`Signed in as ${role.toUpperCase()}! Redirecting to dashboard...`);
-      setTimeout(() => {
-        navigateToDashboard(null, role);
-      }, 800);
+      setError('Unable to connect to authentication server. Please ensure the backend is running.');
     }
   };
 
@@ -240,14 +220,6 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" className="rounded border-slate-300 text-orange-500 focus:ring-0" />
-            <span>Remember me</span>
-          </label>
-          <a href="#" className="text-orange-600 hover:underline font-semibold">Forgot password?</a>
-        </div>
-
         <button
           type="submit"
           disabled={loading}
@@ -257,7 +229,7 @@ function LoginForm() {
             <span className="inline-block w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
           ) : (
             <>
-              <span>Sign In as {role.charAt(0).toUpperCase() + role.slice(1)}</span>
+              <span>Sign In</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}

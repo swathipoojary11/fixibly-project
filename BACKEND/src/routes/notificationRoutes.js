@@ -1,10 +1,11 @@
-const express = require('express');
-const { getNotifications, getUnreadBadgeCount, markAllNotificationsRead } = require('../controllers/notificationController');
+import express from 'express';
+import { authenticateUser } from '../middleware/authMiddleware.js';
+import { getNotifications, getUnreadBadgeCount, markAllNotificationsRead } from '../controllers/notificationController.js';
 
 const router = express.Router();
 
-router.get('/', getNotifications);
-router.get('/unread-count', getUnreadBadgeCount);
-router.patch('/mark-read', markAllNotificationsRead);
+router.get('/', authenticateUser, getNotifications);
+router.get('/unread-count', authenticateUser, getUnreadBadgeCount);
+router.patch('/mark-read', authenticateUser, markAllNotificationsRead);
 
-module.exports = router;
+export default router;

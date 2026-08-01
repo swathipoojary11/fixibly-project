@@ -6,7 +6,7 @@ const RevenueCard = ({ label, amount, growth, period }) => (
   <div className="ff-card p-5 hover:border-orange-200">
     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">{label}</p>
     <p className="text-3xl font-bold text-dark-900 mb-1">
-      ₹{amount.toLocaleString()}
+      ₹{(amount ?? 0).toLocaleString()}
     </p>
     <p className="text-xs text-gray-400 mb-3">{period}</p>
     {growth !== undefined && (

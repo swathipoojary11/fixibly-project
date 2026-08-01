@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Wrench, 
   User, 
@@ -14,16 +14,21 @@ import {
   Phone,
   MapPin,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Radio
 } from 'lucide-react';
 
 function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryRole = searchParams.get('role');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [role, setRole] = useState(queryRole || 'customer');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,6 +36,10 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (queryRole) setRole(queryRole.toLowerCase());
+  }, [queryRole]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,7 +75,7 @@ function RegisterForm() {
           phone: phone.trim(),
           address: address.trim(),
           password: password.trim(),
-          role: 'customer'
+          role: role.toLowerCase()
         }),
       });
 
@@ -74,21 +83,25 @@ function RegisterForm() {
       setLoading(false);
 
       if (result.success) {
-        setSuccess('Customer account registered successfully! Redirecting to login...');
+        setSuccess('Account registered successfully! Redirecting to login...');
         setTimeout(() => {
-          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
-        }, 1200);
+          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+        }, 1000);
       } else {
         setError(result.message || 'Registration failed.');
       }
     } catch (err) {
       setLoading(false);
-      setSuccess('Customer account registered successfully! Redirecting to login...');
-      setTimeout(() => {
-        router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
-      }, 1200);
+      setError('Failed to connect to authentication server.');
     }
   };
+
+  const roles = [
+    { id: 'customer', label: 'Customer', icon: User },
+    { id: 'technician', label: 'Technician', icon: Wrench },
+    { id: 'dispatcher', label: 'Dispatcher', icon: Radio },
+    { id: 'admin', label: 'Admin', icon: ShieldCheck },
+  ];
 
   return (
     <div className="w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-lg p-6 sm:p-8 my-8">
@@ -98,8 +111,34 @@ function RegisterForm() {
         <Link href="/" className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-orange-500 text-white shadow-sm mb-3">
           <Wrench className="w-6 h-6" />
         </Link>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Customer Registration</h1>
-        <p className="text-slate-500 text-xs mt-1">Create an account to book home repair & field services</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Create FieldFlow Account</h1>
+        <p className="text-slate-500 text-xs mt-1">Join the Home Repair & Field Service Booking Platform</p>
+      </div>
+
+      {/* Role Selection */}
+      <div className="mb-4">
+        <label className="block text-xs font-bold text-slate-700 mb-1.5">Account Role *</label>
+        <div className="grid grid-cols-4 gap-2">
+          {roles.map((r) => {
+            const Icon = r.icon;
+            const isSelected = role === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setRole(r.id)}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-center transition-all ${
+                  isSelected
+                    ? 'border-orange-500 bg-orange-50 text-orange-950 font-semibold ring-1 ring-orange-500'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <Icon className={`w-4 h-4 mb-1 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
+                <span className="text-[11px] font-bold">{r.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Status Alerts */}
@@ -183,7 +222,7 @@ function RegisterForm() {
 
         <div>
           <label htmlFor="reg-address" className="block text-xs font-bold text-slate-700 mb-1">
-            Primary Service Address
+            Service Address
           </label>
           <div className="relative">
             <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -258,7 +297,7 @@ function RegisterForm() {
             <span className="inline-block w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
           ) : (
             <>
-              <span>Create Customer Account</span>
+              <span>Create {role.charAt(0).toUpperCase() + role.slice(1)} Account</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -268,7 +307,7 @@ function RegisterForm() {
       {/* Footer Links */}
       <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
         Already have an account?{' '}
-        <Link href="/authentication/login" className="text-orange-600 font-bold hover:underline">
+        <Link href={`/authentication/login?role=${role}`} className="text-orange-600 font-bold hover:underline">
           Sign In
         </Link>
       </div>
