@@ -43,11 +43,11 @@ function LoginForm() {
     if (roleId === 1 || activeRole === 'customer') {
       router.push('/customer');
     } else if (roleId === 2 || activeRole === 'technician') {
-      router.push('/technician/dashboard');
+      router.push('/technician');
     } else if (roleId === 3 || activeRole === 'dispatcher') {
-      router.push('/dispatcher/DispatcherDashboard');
+      router.push('/dispatcher');
     } else if (roleId === 4 || activeRole === 'admin') {
-      router.push('/admin/AdminDashboard');
+      router.push('/admin');
     } else {
       router.push('/customer');
     }

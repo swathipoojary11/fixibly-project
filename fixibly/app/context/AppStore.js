@@ -235,8 +235,9 @@ const defaultContextValue = {
   emergencies: initEM,
   cancelledBookings: [],
   technicians: initTechs,
-  adminNotifs: initAdminNotifs,
-  dispNotifs: initDispNotifs,
+  
+  adminNotifs: [],
+  dispNotifs: [],
   customerNotifs: [],
   setAdminNotifs: () => {},
   setDispNotifs: () => {},
