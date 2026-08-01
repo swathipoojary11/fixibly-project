@@ -1,16 +1,16 @@
-import supabase from '../config/supabase.js';
+const { supabaseAdmin } = require('../config/supabase');
 
-export const createNotification = async ({ recipientRole, userId, bookingId, title, description, notificationType, priority }) => {
+const createNotification = async ({ recipientRole, userId, bookingId, title, description, notificationType, priority }) => {
   try {
-    const { error } = await supabase.from('notifications').insert([
+    const { error } = await supabaseAdmin.from('notifications').insert([
       {
-        recipient_role: recipientRole || 'ALL',
+        recipient_role: recipientRole,
         user_id: userId || null,
         booking_id: bookingId || null,
         title,
         description,
-        notification_type: notificationType || 'System',
-        priority: priority || 'Medium',
+        notification_type: notificationType,
+        priority: priority || 'NORMAL',
         is_read: false,
         created_at: new Date().toISOString()
       }
@@ -21,4 +21,4 @@ export const createNotification = async ({ recipientRole, userId, bookingId, tit
   }
 };
 
-export default { createNotification };
+module.exports = { createNotification };

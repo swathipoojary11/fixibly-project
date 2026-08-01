@@ -1,10 +1,16 @@
-import supabase from "../config/supabase.js";
-import { hashPassword, comparePassword } from "../utils/hashPassword.js";
-import { generateToken } from "../utils/jwt.js";
-import { successResponse, errorResponse } from "../utils/response.js";
+const supabase = require("../../config/supabase");
+const { hashPassword, comparePassword } = require("../../utils/hashPassword");
+const { generateToken } = require("../../utils/jwt");
+
+const {
+  successResponse,
+  errorResponse
+} = require("../../utils/response");
 
 // Register User
-export const registerUser = async (req, res) => {
+const registerUser = async (req, res) => {
+  console.log("Register API called");
+  console.log(req.body);
   try {
     const {
       full_name,
@@ -15,6 +21,7 @@ export const registerUser = async (req, res) => {
       role
     } = req.body;
 
+    // Validate required fields
     if (!full_name || !email || !password || !role) {
       return errorResponse(res, 400, "Please fill all required fields.");
     }
@@ -22,24 +29,24 @@ export const registerUser = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Check if email exists
+    // Check if email already exists
     const { data: existingUser } = await supabase
       .from("users")
       .select("email")
       .ilike("email", cleanEmail)
-      .maybeSingle();
+      .single();
 
     if (existingUser) {
       return errorResponse(res, 400, "Email already registered.");
     }
 
-    // Role mapping
-    let roleId = 1;
+    // Get role_id (case-insensitive search with default role fallback)
+    let roleId = null;
     const { data: roleData } = await supabase
       .from("roles")
       .select("role_id")
       .ilike("role_name", role)
-      .maybeSingle();
+      .single();
 
     if (roleData) {
       roleId = roleData.role_id;
@@ -53,9 +60,11 @@ export const registerUser = async (req, res) => {
       roleId = roleMap[role.toLowerCase()] || 1;
     }
 
+    // Encrypt password
     const encryptedPassword = await hashPassword(cleanPassword);
 
-    const { data: newUser, error } = await supabase
+    // Insert user
+    const { data, error } = await supabase
       .from("users")
       .insert([
         {
@@ -67,30 +76,10 @@ export const registerUser = async (req, res) => {
           role_id: roleId
         }
       ])
-      .select()
-      .single();
+      .select();
 
     if (error) {
       return errorResponse(res, 500, error.message);
-    }
-
-    // If registered as technician, ensure record exists in technicians table
-    if (roleId === 2) {
-      const { data: categoryData } = await supabase
-        .from("service_categories")
-        .select("category_id")
-        .limit(1)
-        .single();
-        
-      await supabase.from("technicians").insert([
-        {
-          user_id: newUser.user_id,
-          category_id: categoryData?.category_id || 1,
-          experience: 3,
-          rating: 5.0,
-          availability_status: "Available"
-        }
-      ]);
     }
 
     return successResponse(
@@ -100,15 +89,19 @@ export const registerUser = async (req, res) => {
     );
 
   } catch (err) {
-    return errorResponse(res, 500, err.message);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
 
 // Login User
-export const loginUser = async (req, res) => {
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Check required fields
     if (!email || !password) {
       return errorResponse(
         res,
@@ -120,11 +113,12 @@ export const loginUser = async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
+    // Find user by email (case-insensitive search)
     const { data: user, error } = await supabase
       .from("users")
-      .select("*, roles(role_name)")
+      .select("*")
       .ilike("email", cleanEmail)
-      .maybeSingle();
+      .single();
 
     if (error || !user) {
       return errorResponse(
@@ -134,22 +128,20 @@ export const loginUser = async (req, res) => {
       );
     }
 
-    if (!user.is_active) {
-      return errorResponse(res, 403, "Account is deactivated. Contact admin.");
-    }
-
+    // Compare password
     const isMatch = await comparePassword(cleanPassword, user.password_hash);
 
     if (!isMatch) {
-      return errorResponse(
-        res,
-        401,
-        "Invalid email or password."
-      );
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password."
+      });
     }
 
+    // Generate JWT
     const token = generateToken(user);
 
+    // Send response
     return successResponse(
       res,
       200,
@@ -160,8 +152,7 @@ export const loginUser = async (req, res) => {
           user_id: user.user_id,
           full_name: user.full_name,
           email: user.email,
-          role_id: user.role_id,
-          role: user.roles?.role_name || (user.role_id === 1 ? 'Customer' : user.role_id === 2 ? 'Technician' : user.role_id === 3 ? 'Dispatcher' : 'Admin')
+          role_id: user.role_id
         }
       }
     );
@@ -171,4 +162,7 @@ export const loginUser = async (req, res) => {
   }
 };
 
-export default { registerUser, loginUser };
+module.exports = {
+  registerUser,
+  loginUser
+};

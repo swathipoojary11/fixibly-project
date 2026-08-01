@@ -1,6 +1,5 @@
-import express from 'express';
-import { authenticateUser } from '../middleware/authMiddleware.js';
-import {
+const express = require('express');
+const {
   assignTechnician,
   reassignTechnician,
   updateBookingStatus,
@@ -8,27 +7,25 @@ import {
   downgradeEmergency,
   getTechnicianSummaryStats,
   getDispatcherDashboardStats,
-  createManualBooking,
-  getIntakeBookings
-} from '../controllers/dispatcherController.js';
+  createManualBooking
+} = require('../controllers/dispatcherController');
 
 const router = express.Router();
 
-// Intake stream & stats
-router.get('/bookings', authenticateUser, getIntakeBookings);
-router.get('/dashboard-stats', authenticateUser, getDispatcherDashboardStats);
-router.get('/technicians/summary', authenticateUser, getTechnicianSummaryStats);
+// Assign, Reassign & Lifecycle Routes
+router.patch('/assign', assignTechnician);
+router.patch('/reassign', reassignTechnician);
+router.patch('/status', updateBookingStatus);
 
-// Assignment & Lifecycle
-router.patch('/assign', authenticateUser, assignTechnician);
-router.patch('/reassign', authenticateUser, reassignTechnician);
-router.patch('/status', authenticateUser, updateBookingStatus);
+// Emergency Routes
+router.post('/emergency/broadcast', triggerEmergencyBroadcast);
+router.patch('/emergency/downgrade', downgradeEmergency);
 
-// Emergency Actions
-router.post('/emergency/broadcast', authenticateUser, triggerEmergencyBroadcast);
-router.patch('/emergency/downgrade', authenticateUser, downgradeEmergency);
+// Stats & Overview Routes for Dispatcher UI
+router.get('/technicians/summary', getTechnicianSummaryStats);
+router.get('/dashboard-stats', getDispatcherDashboardStats);
 
-// Manual Bookings
-router.post('/manual-booking', authenticateUser, createManualBooking);
+// Manual Actions
+router.post('/manual-booking', createManualBooking);
 
-export default router;
+module.exports = router;

@@ -20,18 +20,9 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-const defaultRevenueTrend = [
-  { month: "Jan", revenue: 150000, bookings: 45 },
-  { month: "Feb", revenue: 180000, bookings: 52 },
-  { month: "Mar", revenue: 210000, bookings: 60 },
-  { month: "Apr", revenue: 250000, bookings: 75 },
-];
-
 const RevenueOverview = ({ onBack }) => {
   const { getLiveStats } = useAppStore();
   const { kpi, charts } = getLiveStats();
-
-  const monthlyTrendData = charts?.monthlyRevenueTrend?.length > 0 ? charts.monthlyRevenueTrend : defaultRevenueTrend;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -40,26 +31,26 @@ const RevenueOverview = ({ onBack }) => {
       </button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <RevenueCard label="Today's Revenue" amount={kpi?.expectedRevenueToday ?? kpi?.revenueToday ?? 12500} growth={10.2} period="Estimated based on bookings" />
-        <RevenueCard label="This Week" amount={kpi?.expectedRevenueWeek ?? 85000} growth={8.5} period="Jan 9 – Jan 15, 2025" />
-        <RevenueCard label="This Month" amount={kpi?.expectedRevenueMonth ?? 340000} growth={12.5} period="January 2025" />
+        <RevenueCard label="Today's Revenue"   amount={kpi.expectedRevenueToday}  growth={10.2} period="Estimated based on bookings" />
+        <RevenueCard label="This Week"         amount={kpi.expectedRevenueWeek}   growth={8.5}  period="Jan 9 – Jan 15, 2025" />
+        <RevenueCard label="This Month"        amount={kpi.expectedRevenueMonth}  growth={12.5} period="January 2025" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="ff-card p-4">
           <p className="text-xs text-gray-400">Avg Booking Value</p>
-          <p className="text-2xl font-bold text-dark-900">₹{(kpi?.avgBookingValue ?? 450).toLocaleString()}</p>
+          <p className="text-2xl font-bold text-dark-900">₹{kpi.avgBookingValue?.toLocaleString()}</p>
         </div>
         <div className="ff-card p-4">
           <p className="text-xs text-gray-400">Monthly Growth</p>
-          <p className="text-2xl font-bold text-green-600">+{kpi?.monthlyGrowth ?? 12}%</p>
+          <p className="text-2xl font-bold text-green-600">+{kpi.monthlyGrowth}%</p>
         </div>
       </div>
 
       <div className="ff-card p-5">
         <p className="ff-section-title mb-4">Monthly Revenue Trend</p>
         <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={monthlyTrendData}>
+          <AreaChart data={charts.monthlyRevenueTrend}>
             <defs>
               <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#F97316" stopOpacity={0.15} />
@@ -79,7 +70,7 @@ const RevenueOverview = ({ onBack }) => {
       <div className="ff-card p-5">
         <p className="ff-section-title mb-4">Monthly Bookings</p>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={monthlyTrendData} barSize={20}>
+          <BarChart data={charts.monthlyRevenueTrend} barSize={20}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />

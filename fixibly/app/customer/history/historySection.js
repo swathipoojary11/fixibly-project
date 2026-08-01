@@ -1,75 +1,86 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import HistoryCard from "./historyCard";
-import { fetchApi } from "@/app/utils/api";
-import { Clock, Loader2 } from "lucide-react";
+
+const history = [
+  {
+    id: 1,
+    service: "Electrical Repair",
+    technician: "Rahul Sharma",
+    completedDate: "28 July 2026",
+    rating: 5,
+    description:
+      "Complete electrical wiring inspection, switch replacement and safety testing for your home.",
+    image:
+      "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=900&q=80",
+  },
+
+  {
+    id: 2,
+    service: "AC Maintenance",
+    technician: "Priya Nair",
+    completedDate: "22 July 2026",
+    rating: 4,
+    description:
+      "Full AC servicing including filter cleaning, gas pressure check and cooling performance testing.",
+    image:
+      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=900&q=80",
+  },
+
+  {
+    id: 3,
+    service: "House Cleaning",
+    technician: "Arjun Patel",
+    completedDate: "18 July 2026",
+    rating: 5,
+    description:
+      "Deep cleaning service covering bedrooms, kitchen, bathrooms and complete floor sanitization.",
+    image:
+      "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?w=900&q=80",
+  },
+];
 
 export default function HistorySection() {
-  const router = useRouter();
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchApi('/customer/bookings/history')
-      .then(res => {
-        if (res.history) {
-          const formatted = res.history.map(b => ({
-            id: b.booking_id,
-            service: b.service_categories?.category_name || "Service Booking",
-            technician: b.technicians?.users?.full_name || "Assigned Tech",
-            completedDate: new Date(b.updated_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
-            rating: b.feedback?.overall_rating || 5,
-            description: b.issue_description || b.service_problems?.problem_name || "Completed Field Service Repair.",
-            status: b.booking_status,
-            image: "https://trusteyman.com/wp-content/uploads/2019/02/how-does-plumbing-work-e1548696261445.jpeg"
-          }));
-          setHistory(formatted);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
   return (
-    <section className="py-20 bg-slate-50 border-t border-slate-200">
+    <section className="py-24 bg-gray-50">
+
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-center mb-10 flex-wrap gap-6">
+
+        <div className="flex justify-between items-center mb-14 flex-wrap gap-6">
+
           <div>
-            <span className="uppercase tracking-widest text-orange-500 font-bold text-xs">
+
+            <p className="uppercase tracking-widest text-orange-500 font-semibold">
               Recent Services
-            </span>
-            <h2 className="text-4xl font-extrabold mt-2 text-slate-900 tracking-tight">
-              Your Completed & Past Bookings
+            </p>
+
+            <h2 className="text-5xl font-bold mt-3">
+              Your Completed
+              <br />
+              Bookings
             </h2>
+
           </div>
 
-          <button 
-            onClick={() => router.push('/customer/history')}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold text-xs shadow-sm transition"
-          >
+          <button className="bg-orange-500 hover:bg-orange-600 text-white px-7 py-4 rounded-lg font-semibold transition">
             View Full History →
           </button>
+
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-xs font-semibold text-slate-500 gap-2">
-            <Loader2 size={16} className="animate-spin text-orange-500" />
-            <span>Loading completed history...</span>
-          </div>
-        ) : history.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-xs font-semibold">
-            No completed booking history found.
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {history.slice(0, 3).map((booking) => (
-              <HistoryCard key={booking.id} {...booking} />
-            ))}
-          </div>
-        )}
+        <div className="space-y-10">
+
+          {history.map((booking) => (
+            <HistoryCard
+              key={booking.id}
+              {...booking}
+            />
+          ))}
+
+        </div>
+
       </div>
+
     </section>
   );
 }

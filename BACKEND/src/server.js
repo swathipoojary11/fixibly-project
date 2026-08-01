@@ -11,7 +11,7 @@
 // app.use("/api/customer", require("./routes/customerRoutes"));
 // const authMiddleware = require('./src/middleware/authMiddleware');
 
-import app from "./app.js"; // Relative path to your app file
+import app from "./src/app.js"; // Relative path to your app file
 
 const PORT = process.env.PORT || 5000;
 

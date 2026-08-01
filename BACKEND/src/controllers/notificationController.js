@@ -1,15 +1,13 @@
-import supabase from '../config/supabase.js';
+const { supabaseAdmin } = require('../config/supabase');
 
-export const getNotifications = async (req, res) => {
+const getNotifications = async (req, res) => {
   const { role, userId, notificationType } = req.query;
-  const currentRole = role || req.user?.role || 'CUSTOMER';
-  const currentUserId = userId || req.user?.user_id;
 
   try {
-    let query = supabase
+    let query = supabaseAdmin
       .from('notifications')
       .select('*')
-      .or(`recipient_role.eq.${currentRole.toUpperCase()},recipient_role.eq.ALL,user_id.eq.${currentUserId}`)
+      .or(`recipient_role.eq.${role},recipient_role.eq.ALL,user_id.eq.${userId}`)
       .order('created_at', { ascending: false });
 
     if (notificationType && notificationType !== 'ALL') {
@@ -19,49 +17,45 @@ export const getNotifications = async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    return res.status(200).json({ success: true, notifications: data || [] });
+    return res.status(200).json({ success: true, notifications: data });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-export const getUnreadBadgeCount = async (req, res) => {
+const getUnreadBadgeCount = async (req, res) => {
   const { role, userId } = req.query;
-  const currentRole = role || req.user?.role || 'CUSTOMER';
-  const currentUserId = userId || req.user?.user_id;
 
   try {
-    const { count, error } = await supabase
+    const { count, error } = await supabaseAdmin
       .from('notifications')
       .select('*', { count: 'exact', head: true })
-      .or(`recipient_role.eq.${currentRole.toUpperCase()},recipient_role.eq.ALL,user_id.eq.${currentUserId}`)
+      .or(`recipient_role.eq.${role},recipient_role.eq.ALL,user_id.eq.${userId}`)
       .eq('is_read', false);
 
     if (error) throw error;
 
-    return res.status(200).json({ success: true, unreadCount: count || 0 });
+    return res.status(200).json({ unreadCount: count || 0 });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-export const markAllNotificationsRead = async (req, res) => {
+const markAllNotificationsRead = async (req, res) => {
   const { role, userId } = req.body;
-  const currentRole = role || req.user?.role || 'CUSTOMER';
-  const currentUserId = userId || req.user?.user_id;
 
   try {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('notifications')
       .update({ is_read: true })
-      .or(`recipient_role.eq.${currentRole.toUpperCase()},user_id.eq.${currentUserId}`);
+      .or(`recipient_role.eq.${role},user_id.eq.${userId}`);
 
     if (error) throw error;
 
     return res.status(200).json({ success: true, message: 'All notifications marked as read' });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-export default { getNotifications, getUnreadBadgeCount, markAllNotificationsRead };
+module.exports = { getNotifications, getUnreadBadgeCount, markAllNotificationsRead };

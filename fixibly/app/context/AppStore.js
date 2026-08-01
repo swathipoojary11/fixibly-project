@@ -1,223 +1,230 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { fetchApi } from "@/app/utils/api";
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { bookings as initBookings, emergencyBookings as initEM, cancelledBookings as initCancelled } from "../data/bookings";
+import { technicians as initTechs } from "../data/technicians";
+import { adminNotifications as initAdminNotifs, dispatcherNotifications as initDispNotifs } from "../data/notifications";
+import {
+  kpiStats, dispatcherStats,
+  weeklyBookingTrend, bookingStatusDistribution,
+  emergencyVsNormal, technicianWorkload,
+  dailyBookingVolume, monthlyRevenueTrend,
+} from "../data/analytics";
 
 const AppContext = createContext(null);
 
 export function AppStore({ children }) {
-  const [bookings, setBookings] = useState([]);
-  const [emergencies, setEmergencies] = useState([]);
-  const [cancelledBookings, setCancelledBookings] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
-  const [adminNotifs, setAdminNotifs] = useState([]);
-  const [dispNotifs, setDispNotifs] = useState([]);
+  const [bookings, setBookings] = useState(initBookings);
+  const [emergencies, setEmergencies] = useState(initEM);
+  const [cancelledBookings, setCancelledBookings] = useState(
+    (Array.isArray(initCancelled) ? initCancelled : [])
+      .filter(Boolean)
+      .map((entry, index) => ({
+        ...entry,
+        id: entry.id ?? `CB-${index + 1}`,
+        customer: entry.customer ?? "Unknown",
+        cancelledBy: entry.cancelledBy ?? "Customer",
+        needsReassign: entry.needsReassign ?? true,
+        reassignedTo: entry.reassignedTo ?? null,
+      }))
+  );
+  const [technicians, setTechnicians] = useState(initTechs);
+  const [adminNotifs, setAdminNotifs] = useState(initAdminNotifs);
+  const [dispNotifs, setDispNotifs] = useState(initDispNotifs);
+  // Customer notifications — auto-populated when technician updates status
   const [customerNotifs, setCustomerNotifs] = useState([]);
-  const [kpiStats, setKpiStats] = useState({});
-  const [dispatcherStats, setDispatcherStats] = useState({});
-  const [loading, setLoading] = useState(true);
 
-  // Fetch live backend data
-  const refreshAllData = useCallback(async () => {
-    try {
-      // 1. Dispatcher dashboard data
-      const dispRes = await fetchApi('/dispatcher/dashboard-stats').catch(() => null);
-      if (dispRes?.stats || dispRes?.technicians) {
-        const rawIntake = dispRes.intakeStream || [];
-        const formattedBookings = rawIntake.map(b => ({
-          ...b,
-          id: b.booking_id,
-          customer: b.users?.full_name || "Customer",
-          phone: b.users?.phone || "N/A",
-          category: b.service_categories?.category_name || "General Service",
-          issue: b.issue_description || b.service_problems?.problem_name || "Field Repair",
-          status: b.booking_status,
-          priority: b.priority || (b.emergency_flag ? "High" : "Normal"),
-          emergency: !!b.emergency_flag,
-          address: `${b.street || ''} ${b.area || ''}, ${b.city || 'Mangalore'}`.trim(),
-          technicianId: b.technician_id,
-          technicianName: b.technicians?.users?.full_name || null,
-          technicianPhone: b.technicians?.users?.phone || null,
-          technicianRating: b.technicians?.rating || 5.0,
-          createdAt: b.created_at,
-          scheduledAt: b.preferred_date || b.created_at
-        }));
-
-        const formattedEmergencies = (dispRes.emergencyBroadcasts || []).map(e => ({
-          ...e,
-          id: e.booking_id,
-          customer: e.users?.full_name || "Customer",
-          phone: e.users?.phone || "N/A",
-          category: e.service_categories?.category_name || "General Service",
-          issue: e.emergency_reason || e.issue_description || "Emergency Priority Request",
-          status: e.booking_status,
-          priority: "Emergency",
-          emergency: true,
-          address: `${e.street || ''} ${e.area || ''}, ${e.city || 'Mangalore'}`.trim(),
-          createdAt: e.created_at
-        }));
-
-        const formattedTechs = (dispRes.technicians || []).map(t => ({
-          ...t,
-          id: `TECH-${t.technician_id}`,
-          technician_id: t.technician_id,
-          name: t.users?.full_name || "Field Tech Specialist",
-          email: t.users?.email || "N/A",
-          phone: t.users?.phone || "N/A",
-          category: t.service_categories?.category_name || "General",
-          availability: t.availability_status || "Available",
-          avgRating: t.rating || 5.0,
-          avgResponseTime: "15 mins",
-          completedJobs: 12,
-          delayedJobs: 0
-        }));
-
-        setBookings(formattedBookings);
-        setEmergencies(formattedEmergencies);
-        setTechnicians(formattedTechs);
-        setDispatcherStats(dispRes.stats || {});
-      }
-
-      // 2. Admin stats
-      const adminRes = await fetchApi('/admin/stats').catch(() => null);
-      if (adminRes?.stats) {
-        setKpiStats(adminRes.stats);
-      }
-
-      // 3. Notifications
-      const notifRes = await fetchApi('/notifications').catch(() => null);
-      if (notifRes?.notifications) {
-        setDispNotifs(notifRes.notifications.map(n => ({
-          id: n.notification_id,
-          title: n.title,
-          description: n.message,
-          read: n.is_read,
-          time: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        })));
-        setAdminNotifs(notifRes.notifications.map(n => ({
-          id: n.notification_id,
-          title: n.title,
-          description: n.message,
-          read: n.is_read,
-          time: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        })));
-      }
-    } catch (err) {
-      console.error("AppStore sync error:", err);
-    } finally {
-      setLoading(false);
-    }
+  const addDispNotif = useCallback((notif) => {
+    setDispNotifs(prev => [{ ...notif, id: `DN-${Date.now()}`, read: false, time: "Just now" }, ...prev]);
+  }, []);
+  const addAdminNotif = useCallback((notif) => {
+    setAdminNotifs(prev => [{ ...notif, id: `N-${Date.now()}`, read: false, time: "Just now" }, ...prev]);
+  }, []);
+  const addCustomerNotif = useCallback((notif) => {
+    setCustomerNotifs(prev => [{ ...notif, id: `CN-${Date.now()}`, read: false, time: "Just now" }, ...prev]);
   }, []);
 
-  useEffect(() => {
-    refreshAllData();
-    const interval = setInterval(refreshAllData, 6000);
-    return () => clearInterval(interval);
-  }, [refreshAllData]);
-
-  const assignTechnician = useCallback(async (bookingId, tech) => {
-    try {
-      const rawId = typeof tech === 'object' ? (tech.technician_id || tech.id) : tech;
-      const cleanTechId = Number(String(rawId).replace(/\D/g, '')) || rawId;
-
-      await fetchApi('/dispatcher/assign', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          bookingId: Number(bookingId),
-          technicianId: cleanTechId
-        })
-      });
-      refreshAllData();
-    } catch (err) {
-      alert("Failed to assign technician: " + err.message);
-    }
-  }, [refreshAllData]);
-
-  const createBooking = useCallback(async (newBooking) => {
-    try {
-      const res = await fetchApi('/dispatcher/manual-booking', {
-        method: 'POST',
-        body: JSON.stringify({
-          customer_name: newBooking.customerName || newBooking.customer,
-          customer_email: newBooking.customerEmail || 'walkin@fieldflow.com',
-          customer_phone: newBooking.customerPhone || newBooking.phone,
-          category_id: newBooking.categoryId || 1,
-          problem_id: newBooking.problemId || null,
-          issue_description: newBooking.issue || newBooking.description,
-          emergency_flag: !!newBooking.emergency,
-          street: newBooking.address || 'Walk-in Address',
-          area: newBooking.area || 'Downtown',
-          city: 'Mangalore'
-        })
-      });
-      refreshAllData();
-      return res.booking;
-    } catch (err) {
-      alert("Failed to create manual booking: " + err.message);
-    }
-  }, [refreshAllData]);
-
   const getLiveStats = useCallback(() => {
-    const pending = bookings.filter(b => b.status === 'Pending').length;
-    const availTechs = technicians.filter(t => t.availability === 'Available').length;
-    const busyTechs = technicians.filter(t => t.availability === 'Busy').length;
-
+    const all = [...bookings, ...emergencies];
+    const pending    = all.filter(b => b.status === "Pending").length;
+    const inProgress = all.filter(b => b.status === "In Progress").length;
+    const completed  = all.filter(b => b.status === "Completed").length;
+    const cancelled  = all.filter(b => b.status === "Cancelled").length;
+    const delayed    = all.filter(b => b.status === "Delayed").length;
+    const availTechs = technicians.filter(t => t.availability === "Available").length;
+    const busyTechs  = technicians.filter(t => t.availability === "Busy").length;
     return {
       kpi: {
-        totalBookingsToday: kpiStats.totalBookings || bookings.length,
-        pendingBookings: pending,
-        inProgressJobs: bookings.filter(b => b.status === 'Working' || b.status === 'On The Way' || b.status === 'Assigned').length,
-        completedJobs: kpiStats.completedBookings || bookings.filter(b => b.status === 'Completed').length,
-        cancelledJobs: cancelledBookings.length,
-        activeTechnicians: kpiStats.activeTechnicians || (availTechs + busyTechs),
-        expectedRevenueToday: kpiStats.totalRevenue || 12500,
-        expectedRevenueWeek: 85000,
-        expectedRevenueMonth: 340000,
-        avgBookingValue: 450,
-        monthlyGrowth: 12
+        ...kpiStats,
+        totalBookingsToday: all.length,
+        pendingBookings: pending, inProgressJobs: inProgress,
+        completedJobs: completed, cancelledJobs: cancelled,
+        lateJobs: delayed, emergencyBookings: emergencies.length,
+        activeTechnicians: availTechs + busyTechs,
       },
       dispatcher: {
-        pendingBookings: pending || dispatcherStats.pendingBookings || 0,
-        availableTechnicians: availTechs,
+        ...dispatcherStats,
+        pendingBookings: pending, availableTechnicians: availTechs,
         busyTechnicians: busyTechs,
-        emergencyJobs: emergencies.length,
-        cancelledToday: cancelledBookings.length
+        emergencyJobs: emergencies.filter(e => e.status === "Pending").length,
+        cancelledToday: cancelledBookings.length,
       },
       charts: {
-        weeklyBookingTrend: [
-          { day: "Mon", bookings: 12 },
-          { day: "Tue", bookings: 18 },
-          { day: "Wed", bookings: 15 },
-          { day: "Thu", bookings: 22 },
-          { day: "Fri", bookings: 28 },
-          { day: "Sat", bookings: 35 },
-          { day: "Sun", bookings: 20 },
-        ],
+        weeklyBookingTrend,
         bookingStatusDistribution: [
-          { name: "Completed", value: kpiStats.completedBookings || 10, color: "#22C55E" },
-          { name: "Pending", value: pending || 5, color: "#EAB308" },
-          { name: "Emergency", value: emergencies.length || 2, color: "#EF4444" },
+          { name: "Completed",   value: completed  || bookingStatusDistribution[0].value, color: "#22C55E" },
+          { name: "In Progress", value: inProgress || bookingStatusDistribution[1].value, color: "#F97316" },
+          { name: "Pending",     value: pending    || bookingStatusDistribution[2].value, color: "#EAB308" },
+          { name: "Cancelled",   value: cancelled  || bookingStatusDistribution[3].value, color: "#EF4444" },
+          { name: "Delayed",     value: delayed    || bookingStatusDistribution[4].value, color: "#8B5CF6" },
         ],
-        monthlyRevenueTrend: [
-          { month: "Jan", revenue: 150000, bookings: 45 },
-          { month: "Feb", revenue: 180000, bookings: 52 },
-          { month: "Mar", revenue: 210000, bookings: 60 },
-          { month: "Apr", revenue: 250000, bookings: 75 },
-        ],
+        emergencyVsNormal,
         technicianWorkload: technicians.slice(0, 6).map(t => ({
-          name: t.name ? t.name.split(" ")[0] : "Tech",
-          jobs: 3,
-          completed: 2
-        }))
-      }
+          name: t.name.split(" ")[0],
+          jobs: t.assignedJobs,
+          completed: t.completedJobs,
+        })),
+        dailyBookingVolume,
+        monthlyRevenueTrend,
+      },
     };
-  }, [bookings, emergencies, cancelledBookings, technicians, kpiStats, dispatcherStats]);
+  }, [bookings, emergencies, cancelledBookings, technicians]);
+
+  const assignTechnician = useCallback((bookingId, tech, isEmergency = false) => {
+    const updater = b => b.id === bookingId
+      ? { ...b, technicianId: tech.id, technicianName: tech.name, technicianPhone: tech.phone, technicianCategory: tech.category, technicianRating: tech.avgRating, status: "Assigned" }
+      : b;
+    if (isEmergency) setEmergencies(prev => prev.map(updater));
+    else setBookings(prev => prev.map(updater));
+    setTechnicians(prev => prev.map(t => t.id === tech.id ? { ...t, availability: "Busy", currentBooking: bookingId } : t));
+    // Notify dispatcher
+    addDispNotif({ type: "Technician Assigned", category: "accepted", title: "Technician Assigned", description: `${tech.name} assigned to ${bookingId}. Customer has been notified with technician details.`, icon: "accept" });
+    // Notify customer automatically
+    addCustomerNotif({ type: "Booking Confirmed", bookingId, title: "Technician Assigned to Your Booking", description: `${tech.name} (${tech.category}, ★${tech.avgRating}) has been assigned to your booking ${bookingId}. Phone: ${tech.phone}`, icon: "accept" });
+    addAdminNotif({ type: "Booking Assigned", category: "booking", title: "Booking Assigned", description: `${bookingId} assigned to ${tech.name} by dispatcher.`, icon: "booking" });
+  }, [addDispNotif, addAdminNotif, addCustomerNotif]);
+
+  const technicianCancel = useCallback((bookingId, techName, techId, reason) => {
+    let booking = bookings.find(b => b.id === bookingId) || emergencies.find(b => b.id === bookingId);
+    setBookings(prev => prev.map(b => b.id === bookingId
+      ? { ...b, status: "Cancelled", cancelledBy: "Technician", cancelReason: reason, technicianId: null, technicianName: null }
+      : b));
+    setEmergencies(prev => prev.map(b => b.id === bookingId
+      ? { ...b, status: "Cancelled", cancelledBy: "Technician", cancelReason: reason }
+      : b));
+    if (techId) setTechnicians(prev => prev.map(t => t.id === techId ? { ...t, availability: "Available", currentBooking: null } : t));
+    setCancelledBookings(prev => [{
+      id: bookingId, customer: booking?.customer || "Unknown", customerPhone: booking?.phone || "",
+      address: booking?.address || "", category: booking?.category || "", issue: booking?.issue || "",
+      scheduledAt: booking?.scheduledAt || "", technicianName: techName,
+      cancelledAt: new Date().toISOString(), cancelledBy: "Technician", reason, needsReassign: true,
+    }, ...prev]);
+    addDispNotif({ type: "Booking Cancelled", category: "cancel", title: "Technician Cancelled — Reassign Needed", description: `${techName} cancelled ${bookingId}. Reason: ${reason}. Please reassign.`, icon: "cancel" });
+    addCustomerNotif({ type: "Booking Cancelled", bookingId, title: "Your Booking Was Cancelled", description: `Technician ${techName} cancelled booking ${bookingId}. Reason: ${reason}. A new technician will be assigned shortly.`, icon: "cancel" });
+    addAdminNotif({ type: "Cancelled Booking", category: "cancel", title: "Technician Cancelled", description: `${bookingId} cancelled by ${techName}. Reason: ${reason}.`, icon: "cancel" });
+  }, [bookings, emergencies, addDispNotif, addAdminNotif, addCustomerNotif]);
+
+  const reassignBooking = useCallback((cancelledBookingId, tech) => {
+    setBookings(prev => prev.map(b => b.id === cancelledBookingId
+      ? { ...b, status: "Assigned", technicianId: tech.id, technicianName: tech.name, technicianPhone: tech.phone, cancelledBy: null, cancelReason: null }
+      : b));
+    setTechnicians(prev => prev.map(t => t.id === tech.id ? { ...t, availability: "Busy", currentBooking: cancelledBookingId } : t));
+    setCancelledBookings(prev => prev.map(b => b.id === cancelledBookingId ? { ...b, needsReassign: false, reassignedTo: tech.name } : b));
+    addDispNotif({ type: "Booking Reassigned", category: "accepted", title: "Booking Reassigned", description: `${cancelledBookingId} reassigned to ${tech.name}.`, icon: "accept" });
+    addCustomerNotif({ type: "Booking Reassigned", bookingId: cancelledBookingId, title: "New Technician Assigned", description: `${tech.name} has been assigned to your booking ${cancelledBookingId}. Phone: ${tech.phone}`, icon: "accept" });
+  }, [addDispNotif, addCustomerNotif]);
+
+  // Technician status update — auto-notifies BOTH dispatcher AND customer directly
+  const updateTechnicianStatus = useCallback((bookingId, statusType, location = null) => {
+    const statusMap = {
+      accepted:  { bookingStatus: "Assigned",   dispTitle: "Technician Accepted Job",    custTitle: "Technician Accepted Your Booking",   custDesc: (b, t) => `${t} has accepted your booking ${b} and will start shortly.` },
+      started:   { bookingStatus: "In Progress", dispTitle: "Technician Started Journey", custTitle: "Technician Is On The Way",            custDesc: (b, t) => `${t} has started the journey to your location for booking ${b}.` },
+      ontheway:  { bookingStatus: "On The Way",  dispTitle: "Technician On The Way",      custTitle: "Technician Is On The Way",            custDesc: (b, t) => `${t} is on the way to your location for booking ${b}.` },
+      fivemin:   { bookingStatus: "On The Way",  dispTitle: "Technician 5 Min Away",      custTitle: "Technician Arriving in 5 Minutes!",   custDesc: (b, t) => `${t} is just 5 minutes away from your location for booking ${b}. Please be ready.` },
+      arrived:   { bookingStatus: "In Progress", dispTitle: "Technician Arrived",         custTitle: "Technician Has Arrived",              custDesc: (b, t) => `${t} has arrived at your location for booking ${b}. Work will begin shortly.` },
+    };
+    const s = statusMap[statusType];
+    if (!s) return;
+    let techName = "";
+    const updater = b => {
+      if (b.id === bookingId) {
+        techName = b.technicianName;
+        return {
+          ...b,
+          status: s.bookingStatus,
+          lastUpdate: statusType,
+          lastUpdateTime: new Date().toISOString(),
+          // Location stored on booking — dispatcher can see, customer cannot
+          ...(location ? { technicianLocation: location } : {}),
+        };
+      }
+      return b;
+    };
+    setBookings(prev => prev.map(updater));
+    setEmergencies(prev => prev.map(updater));
+
+    setTimeout(() => {
+      // Dispatcher gets location info
+      const locStr = location ? ` | Location: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "";
+      addDispNotif({
+        type: s.dispTitle, category: "journey", title: s.dispTitle,
+        description: `${techName || "Technician"} updated status for ${bookingId}.${locStr} Customer has been automatically notified.`,
+        icon: "journey",
+      });
+      // Customer gets status update automatically — NO location
+      addCustomerNotif({
+        type: s.custTitle, bookingId,
+        title: s.custTitle,
+        description: s.custDesc(bookingId, techName || "Your technician"),
+        icon: "journey",
+      });
+      addAdminNotif({
+        type: s.dispTitle, category: "booking", title: s.dispTitle,
+        description: `${techName || "Technician"} updated status for ${bookingId}: ${s.dispTitle}`,
+        icon: "journey",
+      });
+    }, 0);
+  }, [addDispNotif, addAdminNotif, addCustomerNotif]);
+
+  const customerMarkCompleted = useCallback((bookingId) => {
+    let techId = null;
+    const updater = b => { if (b.id === bookingId) { techId = b.technicianId; return { ...b, status: "Completed", customerConfirmed: true }; } return b; };
+    setBookings(prev => prev.map(updater));
+    setEmergencies(prev => prev.map(updater));
+    if (techId) setTechnicians(prev => prev.map(t => t.id === techId ? { ...t, availability: "Available", currentBooking: null } : t));
+    addDispNotif({ type: "Job Completed", category: "completed", title: "Customer Confirmed Completion", description: `Customer confirmed ${bookingId} completed. Technician marked available.`, icon: "completed" });
+    addAdminNotif({ type: "Job Completed", category: "booking", title: "Booking Completed", description: `${bookingId} marked completed by customer.`, icon: "completed" });
+  }, [addDispNotif, addAdminNotif]);
+
+  const qualifyToNormal = useCallback((emergencyId, reason) => {
+    const em = emergencies.find(e => e.id === emergencyId);
+    if (!em) return;
+    setBookings(prev => [{ ...em, priority: "Normal", emergency: false, qualifiedFrom: emergencyId, qualifyReason: reason, status: "Pending" }, ...prev]);
+    setEmergencies(prev => prev.filter(e => e.id !== emergencyId));
+    addDispNotif({ type: "Emergency Qualified", category: "booking", title: "Emergency Downgraded to Normal", description: `${emergencyId} reclassified as normal booking. Reason: ${reason}`, icon: "booking" });
+    addAdminNotif({ type: "Emergency Qualified", category: "booking", title: "Emergency Downgraded", description: `${emergencyId} reclassified as normal by dispatcher. Reason: ${reason}`, icon: "booking" });
+  }, [emergencies, addDispNotif, addAdminNotif]);
+
+  const createBooking = useCallback((booking) => {
+    const newBooking = { ...booking, id: `BK-${Date.now()}`, status: "Pending", technicianId: null, technicianName: null, createdAt: new Date().toISOString() };
+    if (booking.emergency) {
+      setEmergencies(prev => [{ ...newBooking, emergencyLevel: "High", broadcastSent: false }, ...prev]);
+    } else {
+      setBookings(prev => [newBooking, ...prev]);
+    }
+    addDispNotif({ type: "New Booking", category: "booking", title: booking.emergency ? "🚨 New Emergency Booking" : "New Booking Received", description: `New ${booking.emergency ? "EMERGENCY " : ""}booking from ${booking.customer} for ${booking.category}. Assign a technician.`, icon: booking.emergency ? "alert" : "booking" });
+    addAdminNotif({ type: "New Booking", category: "booking", title: "New Booking Created", description: `${booking.category} booking by ${booking.customer}.`, icon: "booking" });
+    return newBooking;
+  }, [addDispNotif, addAdminNotif]);
 
   return (
     <AppContext.Provider value={{
       bookings, emergencies, cancelledBookings, technicians,
       adminNotifs, dispNotifs, customerNotifs,
       setAdminNotifs, setDispNotifs, setCustomerNotifs,
-      getLiveStats, assignTechnician, createBooking, refreshAllData
+      getLiveStats,
+      assignTechnician, technicianCancel, reassignBooking,
+      updateTechnicianStatus, customerMarkCompleted,
+      qualifyToNormal, createBooking,
     }}>
       {children}
     </AppContext.Provider>
@@ -225,24 +232,35 @@ export function AppStore({ children }) {
 }
 
 const defaultContextValue = {
-  bookings: [],
-  emergencies: [],
+  bookings: initBookings,
+  emergencies: initEM,
   cancelledBookings: [],
-  technicians: [],
-  adminNotifs: [],
-  dispNotifs: [],
+  technicians: initTechs,
+  adminNotifs: initAdminNotifs,
+  dispNotifs: initDispNotifs,
   customerNotifs: [],
   setAdminNotifs: () => {},
   setDispNotifs: () => {},
   setCustomerNotifs: () => {},
   getLiveStats: () => ({
-    kpi: { totalBookingsToday: 0, pendingBookings: 0, completedJobs: 0, activeTechnicians: 0 },
-    dispatcher: { pendingBookings: 0, availableTechnicians: 0, busyTechnicians: 0, emergencyJobs: 0, cancelledToday: 0 },
-    charts: { weeklyBookingTrend: [], bookingStatusDistribution: [], technicianWorkload: [] }
+    kpi: kpiStats,
+    dispatcher: dispatcherStats,
+    charts: {
+      weeklyBookingTrend,
+      bookingStatusDistribution,
+      emergencyVsNormal,
+      technicianWorkload: [],
+      dailyBookingVolume,
+      monthlyRevenueTrend,
+    },
   }),
   assignTechnician: () => {},
+  technicianCancel: () => {},
+  reassignBooking: () => {},
+  updateTechnicianStatus: () => {},
+  customerMarkCompleted: () => {},
+  qualifyToNormal: () => {},
   createBooking: () => ({}),
-  refreshAllData: () => {}
 };
 
 export const useAppStore = () => {

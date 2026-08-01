@@ -1,7 +1,9 @@
-export const authorizeRoles = (...allowedRoles) => {
+const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
-        const userRoleId = req.user?.role_id;
+        // Get role_id from JWT
+        const userRoleId = req.user.role_id;
 
+        // Map role IDs to role names
         const roleMap = {
             1: "Customer",
             2: "Technician",
@@ -11,6 +13,7 @@ export const authorizeRoles = (...allowedRoles) => {
 
         const userRole = roleMap[userRoleId];
 
+        // Check if the user's role is allowed
         if (!allowedRoles.includes(userRole)) {
             return res.status(403).json({
                 success: false,
@@ -22,4 +25,4 @@ export const authorizeRoles = (...allowedRoles) => {
     };
 };
 
-export default authorizeRoles;
+module.exports = authorizeRoles;

@@ -1,8 +1,9 @@
-import supabase from "../config/supabase.js";
+const supabase = require("../../config/supabase");
 
 // Get Logged-in User Profile
-export const getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
     try {
+
         const userId = req.user.user_id;
 
         const { data, error } = await supabase
@@ -13,7 +14,6 @@ export const getProfile = async (req, res) => {
                 email,
                 phone,
                 address,
-                role_id,
                 is_active,
                 created_at,
                 updated_at,
@@ -22,7 +22,7 @@ export const getProfile = async (req, res) => {
             .eq("user_id", userId)
             .single();
 
-        if (error || !data) {
+        if (error) {
             return res.status(404).json({
                 success: false,
                 message: "User not found."
@@ -35,19 +35,27 @@ export const getProfile = async (req, res) => {
         });
 
     } catch (err) {
+
         res.status(500).json({
             success: false,
             message: err.message
         });
+
     }
 };
 
 // Update Logged-in User Profile
-export const updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
     try {
         const userId = req.user.user_id;
-        const { full_name, phone, address } = req.body;
 
+        const {
+            full_name,
+            phone,
+            address
+        } = req.body;
+
+        // Validation
         if (!full_name || !phone || !address) {
             return res.status(400).json({
                 success: false,
@@ -61,7 +69,7 @@ export const updateProfile = async (req, res) => {
                 full_name,
                 phone,
                 address,
-                updated_at: new Date().toISOString()
+                updated_at: new Date()
             })
             .eq("user_id", userId)
             .select(`
@@ -70,7 +78,6 @@ export const updateProfile = async (req, res) => {
                 email,
                 phone,
                 address,
-                role_id,
                 is_active,
                 updated_at
             `)
@@ -90,11 +97,17 @@ export const updateProfile = async (req, res) => {
         });
 
     } catch (err) {
+
         res.status(500).json({
             success: false,
             message: err.message
         });
+
     }
 };
 
-export default { getProfile, updateProfile };
+
+module.exports = {
+    getProfile,
+    updateProfile
+};
