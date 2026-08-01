@@ -4,7 +4,7 @@ const {
   getAdminDashboardStats,
   getAdminReports,
   getAdminDashboardAnalytics
-} = require('../controllers/adminController');
+} = require('./adminController');
 
 const router = express.Router();
 
