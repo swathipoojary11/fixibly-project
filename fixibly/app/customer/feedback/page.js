@@ -1,13 +1,13 @@
 import Navbar from "@/app/components/navbar";
 import Footer from "@/app/components/footer";
 
-import FeedbackHero from "@/app/components/feedback/FeedbackHero";
-import TechnicianCard from "@/app/components/feedback/TechnicianCard";
-import RatingSection from "@/app/components/feedback/RatingSection";
-import ChecklistSection from "@/app/components/feedback/ChecklistSection";
-import CommentSection from "@/app/components/feedback/CommentSection";
-import RecommendationSection from "@/app/components/feedback/RecommendationSection";
-import SubmitSection from "@/app/components/feedback/SubmitSection";
+import FeedbackHero from "@/app/components/customers/feedback/FeedbackHero";
+import TechnicianCard from "@/app/components/customers/feedback/TechnicianCard";
+import RatingSection from "@/app/components/customers/feedback/RatingSection";
+import ChecklistSection from "@/app/components/customers/feedback/ChecklistSection";
+import CommentSection from "@/app/components/customers/feedback/CommentSection";
+import RecommendationSection from "@/app/components/customers/feedback/RecommendationSection";
+import SubmitSection from "@/app/components/customers/feedback/SubmitSection";
 
 export default function FeedbackPage() {
   return (

@@ -230,8 +230,42 @@ export function AppStore({ children }) {
   );
 }
 
+const defaultContextValue = {
+  bookings: initBookings,
+  emergencies: initEM,
+  cancelledBookings: [],
+  technicians: initTechs,
+  adminNotifs: initAdminNotifs,
+  dispNotifs: initDispNotifs,
+  customerNotifs: [],
+  setAdminNotifs: () => {},
+  setDispNotifs: () => {},
+  setCustomerNotifs: () => {},
+  getLiveStats: () => ({
+    kpi: kpiStats,
+    dispatcher: dispatcherStats,
+    charts: {
+      weeklyBookingTrend,
+      bookingStatusDistribution,
+      emergencyVsNormal,
+      technicianWorkload: [],
+      dailyBookingVolume,
+      monthlyRevenueTrend,
+    },
+  }),
+  assignTechnician: () => {},
+  technicianCancel: () => {},
+  reassignBooking: () => {},
+  updateTechnicianStatus: () => {},
+  customerMarkCompleted: () => {},
+  qualifyToNormal: () => {},
+  createBooking: () => ({}),
+};
+
 export const useAppStore = () => {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useAppStore must be used within AppStore");
+  if (!ctx) {
+    return defaultContextValue;
+  }
   return ctx;
 };

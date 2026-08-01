@@ -207,7 +207,7 @@ export default function HomePage() {
                 <p className="text-slate-300 text-xs sm:text-sm">
                   Sign in to view your past repair bookings, technician notes, and complete service records.
                 </p>
-                <Link href="/login" className="inline-block mt-2 px-5 py-2 bg-orange-500 text-white font-bold text-xs rounded hover:bg-orange-600">
+                <Link href="/authentication/login" className="inline-block mt-2 px-5 py-2 bg-orange-500 text-white font-bold text-xs rounded hover:bg-orange-600">
                   LOGIN TO VIEW
                 </Link>
               </div>
@@ -259,25 +259,25 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link href="/login?role=customer" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
+            <Link href="/authentication/login?role=customer" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
               <User className="w-6 h-6 text-orange-500 mb-2" />
               <div className="font-bold text-sm text-slate-800">Customer</div>
               <p className="text-xs text-slate-500 mt-1">Book repair services & track arrival</p>
             </Link>
 
-            <Link href="/login?role=technician" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
+            <Link href="/authentication/login?role=technician" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
               <Wrench className="w-6 h-6 text-orange-500 mb-2" />
               <div className="font-bold text-sm text-slate-800">Technician</div>
               <p className="text-xs text-slate-500 mt-1">Tap-driven job lists & status updates</p>
             </Link>
 
-            <Link href="/login?role=dispatcher" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
+            <Link href="/authentication/login?role=dispatcher" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
               <Radio className="w-6 h-6 text-orange-500 mb-2" />
               <div className="font-bold text-sm text-slate-800">Dispatcher</div>
               <p className="text-xs text-slate-500 mt-1">Assign jobs & emergency broadcasts</p>
             </Link>
 
-            <Link href="/login?role=admin" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
+            <Link href="/authentication/login?role=admin" className="p-4 rounded-lg bg-slate-50 border border-slate-200 hover:border-orange-500 hover:shadow-md transition-all">
               <ShieldCheck className="w-6 h-6 text-orange-500 mb-2" />
               <div className="font-bold text-sm text-slate-800">Admin</div>
               <p className="text-xs text-slate-500 mt-1">Metrics, revenue & operational overview</p>
