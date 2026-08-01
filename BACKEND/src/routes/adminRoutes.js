@@ -3,7 +3,8 @@ const {
   getAdminDashboardOverview,
   getAdminDashboardStats,
   getAdminReports,
-  getAdminDashboardAnalytics
+  getAdminDashboardAnalytics,
+  getAdminUsers
 } = require('../controllers/adminController');
 
 const router = express.Router();
@@ -11,8 +12,7 @@ const router = express.Router();
 router.get('/overview', getAdminDashboardOverview);
 router.get('/stats', getAdminDashboardStats);
 router.get('/reports', getAdminReports);
-
-// NEW Route for Admin Analytics Charts
 router.get('/dashboard-analytics', getAdminDashboardAnalytics);
+router.get('/users', getAdminUsers);
 
 module.exports = router;

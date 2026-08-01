@@ -7,6 +7,8 @@ const {
   downgradeEmergency,
   getTechnicianSummaryStats,
   getDispatcherDashboardStats,
+  searchCustomers,
+  searchCustomerByPhone,
   createManualBooking
 } = require('../controllers/dispatcherController');
 
@@ -20,6 +22,10 @@ router.patch('/status', updateBookingStatus);
 // Emergency Routes
 router.post('/emergency/broadcast', triggerEmergencyBroadcast);
 router.patch('/emergency/downgrade', downgradeEmergency);
+
+// Customer Search Routes
+router.get('/customer', searchCustomerByPhone);
+router.get('/customers/search', searchCustomers);
 
 // Stats & Overview Routes for Dispatcher UI
 router.get('/technicians/summary', getTechnicianSummaryStats);

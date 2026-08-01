@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useAdminStore as useAppStore } from "../AdminStore";
 import NotificationCard from "../../components/admin/NotificationCard";
 import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
@@ -9,12 +9,12 @@ const TABS = ["All", "Unread", "Read"];
 const CATEGORIES = ["All", "emergency", "booking", "delay", "cancel", "system"];
 
 const NotificationCenter = ({ onBack }) => {
-  const { adminNotifs, setAdminNotifs } = useAppStore();
+  const { adminNotifs, setAdminNotifs, markNotifsReadAsync } = useAppStore();
   const [tab, setTab] = useState("All");
   const [category, setCategory] = useState("All");
 
   const markRead = (id) => setAdminNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
-  const markAllRead = () => setAdminNotifs(n => n.map(x => ({ ...x, read: true })));
+  const markAllRead = () => { if (markNotifsReadAsync) { markNotifsReadAsync(); } else { setAdminNotifs(n => n.map(x => ({ ...x, read: true }))); } };
 
   const filtered = adminNotifs.filter(n => {
     const matchTab = tab === "All" || (tab === "Unread" ? !n.read : n.read);

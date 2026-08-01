@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useAdminStore as useAppStore } from "../AdminStore";
 import BookingTable from "../../components/admin/BookingTable";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import FilterBar from "../../components/dispatcher-admin/FilterBar";
