@@ -12,7 +12,7 @@ import Reports from "../Reports/page";
 import ActivityLog from "../ActivityLog/page";
 import NotificationCenter from "../NotificationCenter/page";
 import UserManagement from "../UserManagement/page";
-import { useAppStore } from "../../context/AppStore";
+import { useAdminStore as useAppStore } from "../AdminStore";
 
 const navItems = [
   { key: "dashboard",     label: "Dashboard",       icon: FiGrid },

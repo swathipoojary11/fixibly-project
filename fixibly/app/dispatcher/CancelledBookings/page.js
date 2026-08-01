@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import StatusBadge from "../../components/dispatcher-admin/StatusBadge";

@@ -1,14 +1,26 @@
 const { supabaseAdmin } = require('../config/supabase');
 
+const buildNotifFilter = (role, userId) => {
+  const parts = [];
+  if (role) parts.push(`recipient_role.eq.${role}`, `recipient_role.eq.ALL`);
+  if (userId) parts.push(`user_id.eq.${userId}`);
+  return parts.join(',');
+};
+
 const getNotifications = async (req, res) => {
   const { role, userId, notificationType } = req.query;
+
+  if (!role && !userId) {
+    return res.status(400).json({ error: 'role or userId is required' });
+  }
 
   try {
     let query = supabaseAdmin
       .from('notifications')
       .select('*')
-      .or(`recipient_role.eq.${role},recipient_role.eq.ALL,user_id.eq.${userId}`)
-      .order('created_at', { ascending: false });
+      .or(buildNotifFilter(role, userId))
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (notificationType && notificationType !== 'ALL') {
       query = query.eq('notification_type', notificationType);
@@ -26,11 +38,15 @@ const getNotifications = async (req, res) => {
 const getUnreadBadgeCount = async (req, res) => {
   const { role, userId } = req.query;
 
+  if (!role && !userId) {
+    return res.status(400).json({ error: 'role or userId is required' });
+  }
+
   try {
     const { count, error } = await supabaseAdmin
       .from('notifications')
       .select('*', { count: 'exact', head: true })
-      .or(`recipient_role.eq.${role},recipient_role.eq.ALL,user_id.eq.${userId}`)
+      .or(buildNotifFilter(role, userId))
       .eq('is_read', false);
 
     if (error) throw error;
@@ -44,11 +60,15 @@ const getUnreadBadgeCount = async (req, res) => {
 const markAllNotificationsRead = async (req, res) => {
   const { role, userId } = req.body;
 
+  if (!role && !userId) {
+    return res.status(400).json({ error: 'role or userId is required' });
+  }
+
   try {
     const { error } = await supabaseAdmin
       .from('notifications')
       .update({ is_read: true })
-      .or(`recipient_role.eq.${role},user_id.eq.${userId}`);
+      .or(buildNotifFilter(role, userId));
 
     if (error) throw error;
 

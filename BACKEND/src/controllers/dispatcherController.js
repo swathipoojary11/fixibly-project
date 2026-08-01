@@ -1,3 +1,5 @@
+
+
 const { supabaseAdmin } = require('../config/supabase');
 const { createNotification } = require('../services/notificationService');
 const { logAuditEvent } = require('../services/auditService');
@@ -7,10 +9,10 @@ const assignTechnician = async (req, res) => {
   const { bookingId, technicianId, dispatcherUserId } = req.body;
 
   try {
-    // A. Fetch full Booking details with joined Customer information
+    // A. Fetch full Booking details with joined Customer (users) information
     const { data: booking, error: bookingFetchErr } = await supabaseAdmin
       .from('bookings')
-      .select('*, customers(customer_id, name, phone, address)')
+      .select('*, customers:users!fk_booking_customer(user_id, full_name, phone, address)')
       .eq('booking_id', bookingId)
       .single();
 
@@ -18,10 +20,10 @@ const assignTechnician = async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // B. Fetch full Technician details
+    // B. Fetch full Technician details (joining technicians with users table)
     const { data: technician, error: techFetchErr } = await supabaseAdmin
       .from('technicians')
-      .select('technician_id, name, phone, skills')
+      .select('technician_id, user_id, experience, rating, availability_status, users(full_name, phone, address)')
       .eq('technician_id', technicianId)
       .single();
 
@@ -29,12 +31,21 @@ const assignTechnician = async (req, res) => {
       return res.status(404).json({ error: 'Technician not found' });
     }
 
-    // C. Update Booking status to ASSIGNED and attach technician_id
+    // Flatten technician object structure for easy use
+    const techDetails = {
+      technician_id: technician.technician_id,
+      name: technician.users?.full_name,
+      phone: technician.users?.phone,
+      rating: technician.rating,
+      availability_status: technician.availability_status
+    };
+
+    // C. Update Booking status to Assigned and attach technician_id
     const { data: updatedBooking, error: bookingErr } = await supabaseAdmin
       .from('bookings')
       .update({
         technician_id: technicianId,
-        booking_status: 'ASSIGNED',
+        booking_status: 'Assigned',
         updated_at: new Date().toISOString()
       })
       .eq('booking_id', bookingId)
@@ -43,24 +54,24 @@ const assignTechnician = async (req, res) => {
 
     if (bookingErr) throw bookingErr;
 
-    // D. Set technician status to BUSY
+    // D. Set technician availability status to Busy
     await supabaseAdmin
       .from('technicians')
-      .update({ availability_status: 'BUSY' })
+      .update({ availability_status: 'Busy' })
       .eq('technician_id', technicianId);
 
     // E. SEND CUSTOMER DETAILS TO TECHNICIAN
     const customerInfo = booking.customers;
-    const customerAddress = booking.address || customerInfo?.address || 'Address not provided';
+    const customerAddress = `${booking.house_number || ''} ${booking.street}, ${booking.area}, ${booking.city} - ${booking.pincode}`.trim();
 
     await createNotification({
       recipientRole: 'TECHNICIAN',
-      userId: technicianId,
+      userId: technician.user_id,
       bookingId,
       title: 'New Job Assigned',
-      description: `New Job #${bookingId}! Customer Name: ${customerInfo?.name || 'N/A'}, Phone: ${customerInfo?.phone || 'N/A'}, Address: ${customerAddress}, Issue: ${booking.description}`,
-      notificationType: 'ASSIGNMENT',
-      priority: 'HIGH'
+      description: `New Job #${bookingId}! Customer Name: ${customerInfo?.full_name || 'N/A'}, Phone: ${customerInfo?.phone || 'N/A'}, Address: ${customerAddress}, Issue: ${booking.issue_description}`,
+      notificationType: 'Assignment',
+      priority: 'High'
     });
 
     // F. SEND TECHNICIAN DETAILS TO CUSTOMER
@@ -70,8 +81,9 @@ const assignTechnician = async (req, res) => {
         userId: booking.customer_id,
         bookingId,
         title: 'Technician Assigned',
-        description: `Technician ${technician.name} has been assigned to your booking #${bookingId}! Contact: ${technician.phone}, Skills: ${technician.skills}.`,
-        notificationType: 'BOOKING'
+        description: `Technician ${techDetails.name} has been assigned to your booking #${bookingId}! Contact: ${techDetails.phone}, Rating: ${techDetails.rating}.`,
+        notificationType: 'Booking',
+        priority: 'Medium'
       });
     }
 
@@ -80,22 +92,23 @@ const assignTechnician = async (req, res) => {
       recipientRole: 'ADMIN',
       bookingId,
       title: 'Technician Assigned',
-      description: `Dispatcher #${dispatcherUserId} assigned Tech #${technicianId} (${technician.name}) to Booking #${bookingId}.`,
-      notificationType: 'SYSTEM'
+      description: `Dispatcher #${dispatcherUserId} assigned Tech #${technicianId} (${techDetails.name}) to Booking #${bookingId}.`,
+      notificationType: 'System',
+      priority: 'Medium'
     });
 
     // H. LOG AUDIT EVENT
     await logAuditEvent(
       dispatcherUserId,
       'DISPATCHER',
-      'TECHNICIAN_ASSIGNED',
-      `Assigned Tech #${technicianId} (${technician.name}) to Booking #${bookingId}`
+      'Technician Assignment',
+      `Assigned Tech #${technicianId} (${techDetails.name}) to Booking #${bookingId}`
     );
 
     return res.status(200).json({
       success: true,
       booking: updatedBooking,
-      assignedTechnician: technician,
+      assignedTechnician: techDetails,
       customerDetails: customerInfo
     });
   } catch (err) {
@@ -114,10 +127,10 @@ const reassignTechnician = async (req, res) => {
       .eq('booking_id', bookingId)
       .single();
 
-    // Fetch New Tech Details for Customer Notification
+    // Fetch New Tech Details (joined with users) for Customer Notification
     const { data: newTech } = await supabaseAdmin
       .from('technicians')
-      .select('name, phone, skills')
+      .select('user_id, rating, users(full_name, phone)')
       .eq('technician_id', newTechnicianId)
       .single();
 
@@ -126,42 +139,54 @@ const reassignTechnician = async (req, res) => {
       .from('bookings')
       .update({
         technician_id: newTechnicianId,
-        booking_status: 'REASSIGNED',
+        booking_status: 'Assigned',
         updated_at: new Date().toISOString()
       })
       .eq('booking_id', bookingId);
 
-    // Free up old technician and mark new technician as BUSY
+    // Free up old technician and mark new technician as Busy
     await supabaseAdmin
       .from('technicians')
-      .update({ availability_status: 'AVAILABLE' })
+      .update({ availability_status: 'Available' })
       .eq('technician_id', oldTechnicianId);
 
     await supabaseAdmin
       .from('technicians')
-      .update({ availability_status: 'BUSY' })
+      .update({ availability_status: 'Busy' })
       .eq('technician_id', newTechnicianId);
 
+    // Fetch Old Tech User ID for notification
+    const { data: oldTechData } = await supabaseAdmin
+      .from('technicians')
+      .select('user_id')
+      .eq('technician_id', oldTechnicianId)
+      .single();
+
     // Notify Old Tech
-    await createNotification({
-      recipientRole: 'TECHNICIAN',
-      userId: oldTechnicianId,
-      bookingId,
-      title: 'Job Unassigned',
-      description: `Booking #${bookingId} has been reassigned to another technician.`,
-      notificationType: 'ASSIGNMENT'
-    });
+    if (oldTechData) {
+      await createNotification({
+        recipientRole: 'TECHNICIAN',
+        userId: oldTechData.user_id,
+        bookingId,
+        title: 'Job Unassigned',
+        description: `Booking #${bookingId} has been reassigned to another technician.`,
+        notificationType: 'Assignment',
+        priority: 'Medium'
+      });
+    }
 
     // Notify New Tech
-    await createNotification({
-      recipientRole: 'TECHNICIAN',
-      userId: newTechnicianId,
-      bookingId,
-      title: 'Reassigned Job Received',
-      description: `You have been reassigned to Booking #${bookingId}. Reason: ${reassignReason}`,
-      notificationType: 'ASSIGNMENT',
-      priority: 'HIGH'
-    });
+    if (newTech) {
+      await createNotification({
+        recipientRole: 'TECHNICIAN',
+        userId: newTech.user_id,
+        bookingId,
+        title: 'Reassigned Job Received',
+        description: `You have been reassigned to Booking #${bookingId}. Reason: ${reassignReason}`,
+        notificationType: 'Assignment',
+        priority: 'High'
+      });
+    }
 
     // Notify Customer with New Tech Details
     if (booking?.customer_id) {
@@ -170,8 +195,9 @@ const reassignTechnician = async (req, res) => {
         userId: booking.customer_id,
         bookingId,
         title: 'Technician Updated',
-        description: `Your booking #${bookingId} was reassigned to ${newTech?.name || 'a new technician'} (Phone: ${newTech?.phone || 'N/A'}).`,
-        notificationType: 'BOOKING'
+        description: `Your booking #${bookingId} was reassigned to ${newTech?.users?.full_name || 'a new technician'} (Phone: ${newTech?.users?.phone || 'N/A'}).`,
+        notificationType: 'Booking',
+        priority: 'Medium'
       });
     }
 
@@ -181,13 +207,14 @@ const reassignTechnician = async (req, res) => {
       bookingId,
       title: 'Job Reassigned',
       description: `Booking #${bookingId} reassigned from Tech #${oldTechnicianId} to Tech #${newTechnicianId}. Reason: ${reassignReason}`,
-      notificationType: 'SYSTEM'
+      notificationType: 'System',
+      priority: 'Medium'
     });
 
     await logAuditEvent(
       dispatcherUserId,
       'DISPATCHER',
-      'JOB_REASSIGNED',
+      'Reassignment',
       `Reassigned Booking #${bookingId} from Tech #${oldTechnicianId} to #${newTechnicianId}`
     );
 
@@ -208,21 +235,44 @@ const updateBookingStatus = async (req, res) => {
       .eq('booking_id', bookingId)
       .single();
 
+    const updatePayload = {
+      booking_status: status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (status === 'Cancelled') {
+      updatePayload.cancellation_reason = cancelReason || null;
+      updatePayload.cancelled_at = new Date().toISOString();
+      updatePayload.cancelled_by = userId;
+    }
+
     await supabaseAdmin
       .from('bookings')
-      .update({
-        booking_status: status,
-        cancellation_reason: cancelReason || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('booking_id', bookingId);
 
+    // Log in status history table
+    await supabaseAdmin
+      .from('booking_status_history')
+      .insert([{ booking_id: bookingId, status }]);
+
     // If job finished or cancelled, free up technician
-    if (booking?.technician_id) {
+    if ((status === 'Completed' || status === 'Cancelled') && booking?.technician_id) {
       await supabaseAdmin
         .from('technicians')
-        .update({ availability_status: 'AVAILABLE' })
+        .update({ availability_status: 'Available' })
         .eq('technician_id', booking.technician_id);
+    }
+
+    // Get technician's user_id if needed for notification
+    let techUserId = null;
+    if (booking?.technician_id) {
+      const { data: techData } = await supabaseAdmin
+        .from('technicians')
+        .select('user_id')
+        .eq('technician_id', booking.technician_id)
+        .single();
+      techUserId = techData?.user_id;
     }
 
     // Broadcast Notifications
@@ -232,7 +282,7 @@ const updateBookingStatus = async (req, res) => {
     for (const role of rolesToNotify) {
       let targetUserId = null;
       if (role === 'CUSTOMER') targetUserId = booking.customer_id;
-      if (role === 'TECHNICIAN') targetUserId = booking.technician_id;
+      if (role === 'TECHNICIAN') targetUserId = techUserId;
 
       await createNotification({
         recipientRole: role,
@@ -240,11 +290,12 @@ const updateBookingStatus = async (req, res) => {
         bookingId,
         title: `Booking ${status}`,
         description: `Booking #${bookingId} was marked as ${status}.${cancelReason ? ` Reason: ${cancelReason}` : ''}`,
-        notificationType: status === 'CANCELLED' ? 'CANCEL' : 'BOOKING'
+        notificationType: status === 'Cancelled' ? 'Cancellation' : 'Booking',
+        priority: status === 'Cancelled' ? 'High' : 'Medium'
       });
     }
 
-    await logAuditEvent(userId, userRole, `BOOKING_${status}`, `Booking #${bookingId} status changed to ${status}`);
+    await logAuditEvent(userId, userRole, 'Status Update', `Booking #${bookingId} status changed to ${status}`);
 
     return res.status(200).json({ success: true, message: `Booking marked as ${status}` });
   } catch (err) {
@@ -258,26 +309,27 @@ const getDispatcherDashboardStats = async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const { data: bookings, error: bErr } = await supabaseAdmin.from('bookings').select('*');
+    const { data: bookings, error: bErr } = await supabaseAdmin
+      .from('bookings')
+      .select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(availability_status, rating, users(full_name, phone, email))');
     if (bErr) throw bErr;
 
-    const { data: technicians, error: tErr } = await supabaseAdmin.from('technicians').select('availability_status');
+    const { data: technicians, error: tErr } = await supabaseAdmin
+      .from('technicians')
+      .select('*, users(full_name, phone, email)');
     if (tErr) throw tErr;
 
-    const pendingBookings = bookings.filter(b => b.booking_status === 'PENDING').length;
-    const availableTechnicians = technicians.filter(t => t.availability_status === 'AVAILABLE').length;
-    const busyTechnicians = technicians.filter(t => t.availability_status === 'BUSY').length;
+    const pendingBookings = bookings.filter(b => b.booking_status === 'Pending').length;
+    const availableTechnicians = technicians.filter(t => t.availability_status === 'Available').length;
+    const busyTechnicians = technicians.filter(t => t.availability_status === 'Busy').length;
 
-    const emergencyJobs = bookings.filter(b =>
-      b.emergency_flag === true &&
-      b.booking_status !== 'COMPLETED' &&
-      b.booking_status !== 'CANCELLED'
-    ).length;
+    const emergencyJobsList = bookings.filter(b =>
+      b.emergency_flag === true && b.booking_status !== 'Completed' && b.booking_status !== 'Cancelled'
+    );
 
-    const cancelledToday = bookings.filter(b =>
-      b.booking_status === 'CANCELLED' &&
-      new Date(b.updated_at) >= todayStart
-    ).length;
+    const cancelledTodayList = bookings.filter(b =>
+      b.booking_status === 'Cancelled'
+    );
 
     return res.status(200).json({
       success: true,
@@ -285,32 +337,193 @@ const getDispatcherDashboardStats = async (req, res) => {
         pendingBookings,
         availableTechnicians,
         busyTechnicians,
-        emergencyJobs,
-        cancelledToday
-      }
+        emergencyJobs: emergencyJobsList.length,
+        cancelledToday: cancelledTodayList.length
+      },
+      bookings: bookings.filter(b => !b.emergency_flag),
+      emergencies: emergencyJobsList,
+      cancelledBookings: cancelledTodayList,
+      technicians
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 };
-
-// 5. Manual Booking Endpoint (Dispatcher UI)
-const createManualBooking = async (req, res) => {
-  const { customerId, categoryId, description, address, priority, emergencyFlag, dispatcherUserId } = req.body;
+const searchCustomers = async (req, res) => {
+  const { phone, email } = req.query;
 
   try {
-    const { data: booking, error } = await supabaseAdmin
+    let query = supabaseAdmin
+      .from("users")
+      .select("user_id, full_name, email, phone");
+
+    if (phone) {
+      query = query.eq("phone", phone);
+    } else if (email) {
+      query = query.eq("email", email);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Phone or email is required"
+      });
+    }
+
+    const { data, error } = await query.single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      customer: data
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+// 5. Manual Booking Endpoint (Dispatcher UI)
+
+// 6. Emergency Broadcast Endpoint
+const triggerEmergencyBroadcast = async (req, res) => {
+  const { bookingId, dispatcherUserId } = req.body;
+
+  try {
+    const { data: booking, error: bErr } = await supabaseAdmin
       .from('bookings')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .single();
+
+    if (bErr || !booking) {
+      return res.status(404).json({ error: 'Booking not found for broadcast' });
+    }
+
+    const { data: availableTechs, error: tErr } = await supabaseAdmin
+      .from('technicians')
+      .select('technician_id, user_id')
+      .eq('availability_status', 'Available');
+
+    if (tErr) throw tErr;
+
+    if (availableTechs && availableTechs.length > 0) {
+      for (const tech of availableTechs) {
+        await createNotification({
+          recipientRole: 'TECHNICIAN',
+          userId: tech.user_id,
+          bookingId,
+          title: '🚨 EMERGENCY BROADCAST JOB',
+          description: `Urgent booking #${bookingId} requires immediate attention! Address: ${booking.street}, ${booking.city}`,
+          notificationType: 'Emergency',
+          priority: 'High'
+        });
+      }
+    }
+
+    await logAuditEvent(
+      dispatcherUserId,
+      'DISPATCHER',
+      'Emergency Downgrade',
+      `Triggered emergency broadcast for Booking #${bookingId}`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Emergency broadcast sent to ${availableTechs?.length || 0} available technicians.`
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+const searchCustomerByPhone = async (req, res) => {
+  try {
+    const { phone } = req.query;
+
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select("user_id, full_name, phone")
+      .eq("phone", phone)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      customer: data
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+const createManualBooking = async (req, res) => {
+  try {
+    const {
+      customerId,
+      categoryId,
+      problemId,
+      issueDescription,
+      emergencyFlag,
+      emergencyReason,
+      priority,
+      preferredDate,
+      preferredTime,
+      houseNumber,
+      apartmentName,
+      street,
+      area,
+      city,
+      state,
+      pincode,
+      dispatcherUserId
+    } = req.body;
+
+    const { data: booking, error } = await supabaseAdmin
+      .from("bookings")
       .insert([
         {
           customer_id: customerId,
           category_id: categoryId,
-          description,
-          address,
-          priority: priority || 'NORMAL',
+          problem_id: problemId,
+
+          issue_description: issueDescription,
+
           emergency_flag: emergencyFlag || false,
-          booking_status: 'PENDING',
-          created_at: new Date().toISOString()
+          emergency_reason: emergencyReason || null,
+
+          priority: priority || "Normal",
+
+          preferred_date: preferredDate,
+          preferred_time: preferredTime,
+
+          house_number: houseNumber,
+          apartment_name: apartmentName || null,
+
+          street,
+          area,
+          city,
+          state,
+          pincode,
+
+          booking_status: "Pending",
+
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       ])
       .select()
@@ -318,30 +531,34 @@ const createManualBooking = async (req, res) => {
 
     if (error) throw error;
 
+    await createNotification({
+      recipientRole: "DISPATCHER",
+      bookingId: booking.booking_id,
+      title: "New Manual Booking",
+      description: `Manual Booking #${booking.booking_id} created.`,
+      notificationType: "Booking",
+      priority: "Medium"
+    });
+
     await logAuditEvent(
-      dispatcherUserId,
-      'DISPATCHER',
-      'MANUAL_BOOKING_CREATED',
-      `Dispatcher manually created Booking #${booking.booking_id} for Customer #${customerId}`
+      dispatcherUserId || null,
+      "DISPATCHER",
+      "Manual Booking",
+      `Created Booking #${booking.booking_id}`
     );
 
-    if (emergencyFlag) {
-      await createNotification({
-        recipientRole: 'TECHNICIAN',
-        bookingId: booking.booking_id,
-        title: 'EMERGENCY JOB AVAILABLE',
-        description: `New manual emergency booking #${booking.booking_id} created. Address: ${address}`,
-        notificationType: 'EMERGENCY',
-        priority: 'CRITICAL'
-      });
-    }
+    return res.status(201).json({
+      success: true,
+      booking
+    });
 
-    return res.status(201).json({ success: true, message: 'Manual booking created successfully', booking });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
   }
 };
-
 // 7. Downgrade Emergency Status
 const downgradeEmergency = async (req, res) => {
   const { bookingId, dispatcherUserId, reason } = req.body;
@@ -351,7 +568,7 @@ const downgradeEmergency = async (req, res) => {
       .from('bookings')
       .update({
         emergency_flag: false,
-        priority: 'NORMAL',
+        priority: 'Normal',
         updated_at: new Date().toISOString()
       })
       .eq('booking_id', bookingId)
@@ -363,7 +580,7 @@ const downgradeEmergency = async (req, res) => {
     await logAuditEvent(
       dispatcherUserId,
       'DISPATCHER',
-      'EMERGENCY_DOWNGRADED',
+      'Emergency Broadcast',
       `Downgraded emergency flag for Booking #${bookingId}. Reason: ${reason || 'Not specified'}`
     );
 
@@ -382,14 +599,23 @@ const getTechnicianSummaryStats = async (req, res) => {
   try {
     const { data: technicians, error } = await supabaseAdmin
       .from('technicians')
-      .select('technician_id, name, availability_status, rating');
+      .select(`
+        technician_id,
+        user_id,
+        category_id,
+        experience,
+        rating,
+        availability_status,
+        profile_picture,
+        users (full_name, phone, address, email)
+      `);
 
     if (error) throw error;
 
     const total = technicians.length;
-    const available = technicians.filter(t => t.availability_status === 'AVAILABLE').length;
-    const busy = technicians.filter(t => t.availability_status === 'BUSY').length;
-    const offline = technicians.filter(t => t.availability_status === 'OFFLINE').length;
+    const available = technicians.filter(t => t.availability_status === 'Available').length;
+    const busy = technicians.filter(t => t.availability_status === 'Busy').length;
+    const offline = technicians.filter(t => t.availability_status === 'Offline').length;
 
     return res.status(200).json({
       success: true,
@@ -405,58 +631,6 @@ const getTechnicianSummaryStats = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
-// 6. Emergency Broadcast Endpoint
-const triggerEmergencyBroadcast = async (req, res) => {
-  const { bookingId, dispatcherUserId } = req.body;
-
-  try {
-    const { data: booking, error: bErr } = await supabaseAdmin
-      .from('bookings')
-      .select('*')
-      .eq('booking_id', bookingId)
-      .single();
-
-    if (bErr || !booking) {
-      return res.status(404).json({ error: 'Booking not found for broadcast' });
-    }
-
-    const { data: availableTechs, error: tErr } = await supabaseAdmin
-      .from('technicians')
-      .select('technician_id')
-      .eq('availability_status', 'AVAILABLE');
-
-    if (tErr) throw tErr;
-
-    if (availableTechs && availableTechs.length > 0) {
-      for (const tech of availableTechs) {
-        await createNotification({
-          recipientRole: 'TECHNICIAN',
-          userId: tech.technician_id,
-          bookingId,
-          title: '🚨 EMERGENCY BROADCAST JOB',
-          description: `Urgent booking #${bookingId} requires immediate attention! Address: ${booking.address}`,
-          notificationType: 'EMERGENCY',
-          priority: 'CRITICAL'
-        });
-      }
-    }
-
-    await logAuditEvent(
-      dispatcherUserId,
-      'DISPATCHER',
-      'EMERGENCY_BROADCAST',
-      `Triggered emergency broadcast for Booking #${bookingId}`
-    );
-
-    return res.status(200).json({ 
-      success: true, 
-      message: `Emergency broadcast sent to ${availableTechs?.length || 0} available technicians.` 
-    });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-};
-
 module.exports = {
   assignTechnician,
   reassignTechnician,
@@ -464,6 +638,8 @@ module.exports = {
   getTechnicianSummaryStats,
   updateBookingStatus,
   getDispatcherDashboardStats,
-  createManualBooking,
-  triggerEmergencyBroadcast
+  triggerEmergencyBroadcast,
+  searchCustomers,
+  searchCustomerByPhone,
+  createManualBooking
 };

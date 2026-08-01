@@ -12,7 +12,7 @@ import TechnicianAvailability from "../TechnicianAvailability/page";
 import CurrentStatus from "../CurrentStatus/page";
 import CancelledBookings from "../CancelledBookings/page";
 import DispatcherNotifications from "../DispatcherNotification/page";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 
 const navItems = [
   { key: "dashboard",     label: "Dashboard",         icon: FiGrid },
@@ -28,12 +28,24 @@ const navItems = [
 const DispatcherApp = () => {
   const [activePage, setActivePage] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { dispNotifs } = useAppStore();
+  const { dispNotifs, loading, fetchError } = useAppStore();
   const unreadCount = dispNotifs.filter(n => !n.read).length;
 
   const goBack = () => setActivePage("dashboard");
 
   const renderPage = () => {
+    if (loading) return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+    if (fetchError) return (
+      <div className="ff-card p-6 border-red-100 bg-red-50 text-center">
+        <p className="text-red-600 font-semibold text-sm">Failed to load data</p>
+        <p className="text-xs text-red-400 mt-1">{fetchError}</p>
+        <button onClick={() => window.location.reload()} className="mt-3 ff-btn-primary text-xs">Retry</button>
+      </div>
+    );
     switch (activePage) {
       case "dashboard":     return <DispatcherDashboard onNavigate={setActivePage} />;
       case "bookings":      return <ViewBookings onBack={goBack} />;

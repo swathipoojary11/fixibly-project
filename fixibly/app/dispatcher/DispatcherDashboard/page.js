@@ -4,7 +4,7 @@ import {
   FiCalendar, FiZap, FiPlusCircle, FiUsers, FiActivity,
   FiBell, FiClock, FiCheckCircle, FiXCircle,
 } from "react-icons/fi";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 
 const actionCards = [
   { key: "bookings",     label: "View Bookings",      icon: FiCalendar,   desc: "Monitor all incoming bookings",   color: "from-orange-500 to-orange-600" },
@@ -31,7 +31,7 @@ const DispatcherDashboard = ({ onNavigate }) => {
     { icon: FiClock,       label: "Pending Bookings",      value: stats.pendingBookings,      color: "yellow", nav: "bookings" },
     { icon: FiCheckCircle, label: "Available Technicians", value: stats.availableTechnicians, color: "green",  nav: "availability" },
     { icon: FiUsers,       label: "Busy Technicians",      value: stats.busyTechnicians,      color: "orange", nav: "availability" },
-    { icon: FiZap,         label: "Emergency Jobs",        value: stats.emergencyJobs,        color: "red",    nav: "emergency" },
+    { icon: FiZap,         label: "Active Emergencies",    value: stats.emergencyJobs,        color: "red",    nav: "emergency" },
     { icon: FiXCircle,     label: "Cancelled Today",       value: stats.cancelledToday,       color: "purple", nav: "cancelled" },
   ];
 

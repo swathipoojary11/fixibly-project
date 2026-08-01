@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useAdminStore as useAppStore } from "../AdminStore";
 import TechnicianCard from "../../components/admin/TechnicianCard";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import FilterBar from "../../components/dispatcher-admin/FilterBar";
@@ -15,25 +15,49 @@ const SORT_OPTIONS = [
 ];
 
 const TechnicianPerformance = ({ onBack }) => {
-  const { technicians } = useAppStore();
+  const { technicians, bookings, emergencies } = useAppStore();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});
   const [sortKey, setSortKey] = useState("best");
 
+  // Enrich technicians with computed job stats from bookings
+  const enriched = useMemo(() => {
+    const allBookings = [...bookings, ...emergencies];
+    return technicians.map(t => {
+      const mine = allBookings.filter(b => b.technicianId === t.id || b.technicianName === t.name);
+      const completed  = mine.filter(b => b.status === "Completed").length;
+      const assigned   = mine.filter(b => ["Assigned","Accepted","On The Way","Arrived","Working","In Progress"].includes(b.status)).length;
+      const delayed    = mine.filter(b => b.status === "Delayed").length;
+      const total      = mine.length;
+      return {
+        ...t,
+        completedJobs:  completed,
+        assignedJobs:   assigned,
+        delayedJobs:    delayed,
+        completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+        avgResponseTime: t.avgResponseTime || "—"
+      };
+    });
+  }, [technicians, bookings, emergencies]);
+
   const filtered = useMemo(() => {
     const sortFn = SORT_OPTIONS.find(s => s.key === sortKey)?.fn || SORT_OPTIONS[0].fn;
-    return technicians
+    return enriched
       .filter(t => {
-        const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase());
         const matchCategory = !filters.category || t.category === filters.category;
         const matchAvail = !filters.availability || t.availability === filters.availability;
         return matchSearch && matchCategory && matchAvail;
       })
       .sort(sortFn);
-  }, [technicians, search, filters, sortKey]);
+  }, [enriched, search, filters, sortKey]);
 
-  const avgRating = (technicians.reduce((s, t) => s + t.avgRating, 0) / technicians.length).toFixed(1);
-  const avgCompletion = (technicians.reduce((s, t) => s + t.completionRate, 0) / technicians.length).toFixed(1);
+  const avgRating = enriched.length > 0
+    ? (enriched.reduce((s, t) => s + (t.avgRating || 0), 0) / enriched.length).toFixed(1)
+    : "0.0";
+  const avgCompletion = enriched.length > 0
+    ? (enriched.reduce((s, t) => s + (t.completionRate || 0), 0) / enriched.length).toFixed(1)
+    : "0.0";
 
   return (
     <div className="space-y-5 animate-fadeIn">
