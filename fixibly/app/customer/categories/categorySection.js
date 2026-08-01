@@ -131,3 +131,108 @@ export default function CategorySection() {
         </section>
     );
 }
+
+// "use client";
+
+// import { useState, useEffect } from "react";
+// import { Wrench, Zap, Wind, Hammer, Sparkles, Droplets, Trees, Bug, Paintbrush, Home } from "lucide-react";
+// import CategoryCard from "./categoryCard";
+
+// const getCategoryIcon = (name = "") => {
+//   const lower = name.toLowerCase();
+//   if (lower.includes("plumb")) return <Droplets size={28} color="white" />;
+//   if (lower.includes("electr")) return <Zap size={28} color="white" />;
+//   if (lower.includes("hvac") || lower.includes("ac")) return <Wind size={28} color="white" />;
+//   if (lower.includes("handy")) return <Hammer size={28} color="white" />;
+//   if (lower.includes("clean")) return <Sparkles size={28} color="white" />;
+//   if (lower.includes("exter")) return <Home size={28} color="white" />;
+//   if (lower.includes("land") || lower.includes("garden")) return <Trees size={28} color="white" />;
+//   if (lower.includes("pest")) return <Bug size={28} color="white" />;
+//   if (lower.includes("paint")) return <Paintbrush size={28} color="white" />;
+//   return <Wrench size={28} color="white" />;
+// };
+
+// export default function CategorySection() {
+//   const [categories, setCategories] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [apiError, setApiError] = useState(null);
+
+//   useEffect(() => {
+//     const fetchCategories = async () => {
+//       try {
+//         console.log("Fetching categories from http://localhost:5000/api/customer/services...");
+//         const response = await fetch("http://localhost:5000/api/customer/services");
+        
+//         if (!response.ok) {
+//           throw new Error(`HTTP error! Status: ${response.status}`);
+//         }
+
+//         const data = await response.json();
+//         console.log("Fetched Data:", data);
+
+//         if (data.success && Array.isArray(data.categories)) {
+//           const formattedCategories = data.categories.map((cat) => ({
+//             id: cat.category_id,
+//             title: cat.category_name,
+//             description: cat.description || "Professional service provided by verified local technicians.",
+//             image: cat.category_image_url || "https://trusteyman.com/wp-content/uploads/2019/02/how-does-plumbing-work-e1548696261445.jpeg",
+//             icon: getCategoryIcon(cat.category_name),
+//           }));
+//           setCategories(formattedCategories);
+//         } else {
+//           setApiError("API returned failure response or empty categories array.");
+//         }
+//       } catch (error) {
+//         console.error("FAILED TO FETCH CATEGORIES:", error);
+//         setApiError(error.message);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchCategories();
+//   }, []);
+
+//   return (
+//     <section className="py-24 bg-gray-50">
+//       <div className="max-w-7xl mx-auto px-6">
+//         <div className="text-center mb-16">
+//           <span className="text-orange-500 font-semibold uppercase tracking-widest">
+//             Our Services
+//           </span>
+//           <h2 className="text-5xl font-bold mt-4 text-gray-900">
+//             Choose a Service Category
+//           </h2>
+//           <p className="mt-6 text-gray-600 max-w-2xl mx-auto">
+//             Select the service you need and continue to the booking
+//             process with trusted professionals.
+//           </p>
+//         </div>
+
+//         {loading ? (
+//           <div className="text-center py-12 text-gray-500 font-semibold text-lg">
+//             Loading categories from database...
+//           </div>
+//         ) : apiError ? (
+//           <div className="text-center py-12 text-red-500 font-semibold text-lg bg-red-50 rounded-xl border border-red-200">
+//             Error: {apiError}
+//             <p className="text-xs text-gray-600 mt-2">Make sure Express server is running on port 5000 and CORS is enabled.</p>
+//           </div>
+//         ) : categories.length === 0 ? (
+//           <div className="text-center py-12 text-gray-500 font-semibold text-lg">
+//             No active categories available right now.
+//           </div>
+//         ) : (
+//           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
+//             {categories.map((category) => (
+//               <CategoryCard
+//                 key={category.id}
+//                 {...category}
+//               />
+//             ))}
+//           </div>
+//         )}
+//       </div>
+//     </section>
+//   );
+// }

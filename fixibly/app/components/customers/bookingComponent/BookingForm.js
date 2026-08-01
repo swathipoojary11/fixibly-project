@@ -993,14 +993,14 @@
 
 
 'use client';
-
+import { useRouter } from "next/navigation";
 import { useState, useEffect, use } from "react";
 import { User, Phone, Mail, Wrench, MapPin, CalendarDays, AlertTriangle, ShieldCheck, ArrowRight, PhoneCall } from "lucide-react";
 
 export default function SingleBookingForm({ searchParams }) {
   // 1. Unwrap searchParams using React.use() since it's a Promise in Next.js 15+
   const resolvedParams = use(searchParams);
-
+const router = useRouter();
   // 1. Centralized Form State
   const [formData, setFormData] = useState({
     customerName: "Swathi",
@@ -1295,13 +1295,13 @@ export default function SingleBookingForm({ searchParams }) {
           </div>
         </div>
 
-        <button
-          onClick={() => alert("Booking Confirmed!")}
-          className="w-full bg-[#FF5500] hover:bg-[#e04b00] text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md mt-2"
-        >
-          <span>Confirm Booking Now</span>
-          <ArrowRight size={15} />
-        </button>
+      <button
+      onClick={() => router.push('/customer/bookingConfirmation/page.js')}
+      className="w-full bg-[#FF5500] hover:bg-[#e04b00] text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md mt-2 cursor-pointer"
+    >
+      <span>Confirm Booking Now</span>
+      <ArrowRight size={15} />
+    </button>
 
         <div className="flex items-center justify-center gap-1.5 text-gray-400 text-[10px] pt-1">
           <ShieldCheck size={13} className="text-[#FF5500]" />

@@ -1,11 +1,11 @@
-const supabase = require("../config/supabase");
-const { hashPassword, comparePassword } = require("../utils/hashPassword");
-const { generateToken } = require("../utils/jwt");
+const supabase = require("../../config/supabase");
+const { hashPassword, comparePassword } = require("../../utils/hashPassword");
+const { generateToken } = require("../../utils/jwt");
 
 const {
   successResponse,
   errorResponse
-} = require("../utils/response");
+} = require("../../utils/response");
 
 // Register User
 const registerUser = async (req, res) => {
