@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { bookings as initBookings, emergencyBookings as initEM, cancelledBookings as initCancelled } from "../data/bookings";
 import { technicians as initTechs } from "../data/technicians";
-import { adminNotifications as initAdminNotifs, dispatcherNotifications as initDispNotifs } from "../data/notifications";
 import {
   kpiStats, dispatcherStats,
   weeklyBookingTrend, bookingStatusDistribution,
@@ -28,8 +27,8 @@ export function AppStore({ children }) {
       }))
   );
   const [technicians, setTechnicians] = useState(initTechs);
-  const [adminNotifs, setAdminNotifs] = useState(initAdminNotifs);
-  const [dispNotifs, setDispNotifs] = useState(initDispNotifs);
+  const [adminNotifs, setAdminNotifs] = useState([]);
+  const [dispNotifs, setDispNotifs] = useState([]);
   // Customer notifications — auto-populated when technician updates status
   const [customerNotifs, setCustomerNotifs] = useState([]);
 
