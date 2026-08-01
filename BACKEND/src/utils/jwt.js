@@ -7,7 +7,7 @@ const generateToken = (user) => {
             user_id: user.user_id,
             role_id: user.role_id
         },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || "fieldflow123456789",
         {
             expiresIn: "1d"
         }
