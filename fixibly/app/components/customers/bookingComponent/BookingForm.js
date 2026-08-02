@@ -1,556 +1,468 @@
 'use client';
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
-import { 
-  User, Phone, Mail, MapPin, CalendarDays, 
-  AlertTriangle, ShieldCheck, ArrowRight, PhoneCall, Loader2, Wrench 
-} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import ElderlySupport from './ElderlySupport';
 
-export default function SingleBookingForm() {
+export default function BookingForm({ categoryId }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // URL query params auto-fill extraction
-  const preselectedServiceId = searchParams.get("serviceId") || searchParams.get("categoryId");
-  const preselectedServiceName = searchParams.get("service") || searchParams.get("category");
-
-  // Loaders & Error States
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  // DB Data
-  const [categories, setCategories] = useState([]);
-  const [availableProblems, setAvailableProblems] = useState([]);
-
-  // Customer Profile (Fetched from DB)
-  const [userProfile, setUserProfile] = useState({
-    id: null,
-    name: "",
-    phone: "",
-    email: "",
+  // Auto-Fetched Category, Problems & User Profile Data
+  const [categoryData, setCategoryData] = useState(null);
+  const [problemsList, setProblemsList] = useState([]);
+  const [customerInfo, setCustomerInfo] = useState({
+    full_name: '',
+    email: '',
+    phone: ''
   });
 
-  // Central Form State
-  const [formData, setFormData] = useState({
-    categoryId: "",
-    selectedCategoryName: "",
-    selectedProblems: [], // Array of problem objects with fixed prices
-    customProblem: "",
-    address: "",
-    scheduleType: "anytime", // 'anytime' | 'scheduled'
-    date: "",
-    time: "",
-    isEmergency: false,
-    emergencyReason: "",
+  // Form Selections
+  const [selectedProblemId, setSelectedProblemId] = useState('');
+  const [isCustomProblem, setIsCustomProblem] = useState(false);
+  const [issueDescription, setIssueDescription] = useState('');
+
+  // Emergency Toggle
+  const [emergencyFlag, setEmergencyFlag] = useState(false);
+  const [emergencyReason, setEmergencyReason] = useState('');
+
+  // Calculated Pricing Summary
+  const [summaryData, setSummaryData] = useState(null);
+
+  // Address Fields
+  const [address, setAddress] = useState({
+    houseNumber: '',
+    apartmentName: '',
+    street: '',
+    area: '',
+    city: 'Mangalore',
+    pincode: ''
   });
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  // Schedule Fields
+  const [preferredDate, setPreferredDate] = useState('');
+  const [preferredTime, setPreferredTime] = useState('');
+  const [anytimeService, setAnytimeService] = useState(false);
 
-  // Helper for Safe Fetch Execution
-  const safeFetchJson = async (url, options = {}) => {
-    const res = await fetch(url, options);
-    const contentType = res.headers.get("content-type");
-
-    if (contentType && contentType.includes("text/html")) {
-      throw new Error(`Endpoint ${url} returned HTML instead of JSON (${res.status}). Check server routing.`);
-    }
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.message || `Server request failed with status ${res.status}`);
-    }
-
-    return data;
-  };
-
-  // ----------------------------------------------------
-  // 1. Fetch Logged-in Customer Details & Service Categories
-  // ----------------------------------------------------
-  // Replace Section 1 inside useEffect with this diagnostic block:
-useEffect(() => {
-  const initializeData = async () => {
-    const token = localStorage.getItem("token") || localStorage.getItem("jwt");
-
-    console.log("🔍 Checking Auth Token:", token ? "Token found" : "NO TOKEN FOUND");
-
-    if (!token) {
-      setErrorMessage("Authentication token not found in localStorage. Please log in.");
-      setLoadingProfile(false);
-      return;
-    }
-
-    try {
-      setLoadingProfile(true);
-
-      // 1. Log Profile Raw Output
-      const profileUrl = `${BACKEND_URL}/api/customer/profile`;
-      console.log("🌐 Fetching Profile from:", profileUrl);
-      const profileData = await safeFetchJson(profileUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("👤 Raw Profile Data from DB:", profileData);
-
-      // 2. Log Services Raw Output
-      const servicesUrl = `${BACKEND_URL}/api/customer/services`;
-      console.log("🌐 Fetching Services from:", servicesUrl);
-      const catData = await safeFetchJson(servicesUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("🏷️ Raw Services/Categories Data from DB:", catData);
-
-      // Set user profile state
-      const user = profileData.user || profileData.data || profileData.customer || profileData;
-      if (user) {
-        setUserProfile({
-          id: user.id || user.user_id || user.customer_id,
-          name: user.full_name || user.name || user.username || "Logged Customer",
-          phone: user.phone_number || user.phone || user.mobile || "N/A",
-          email: user.email || "N/A",
-        });
-
-        if (user.address) {
-          setFormData((prev) => ({ ...prev, address: user.address }));
-        }
-      }
-
-      // Handle categories array parsing
-      const fetchedCategories = Array.isArray(catData)
-        ? catData
-        : catData.categories || catData.services || catData.data || [];
-
-      console.log("✅ Parsed Categories Array:", fetchedCategories);
-
-      if (Array.isArray(fetchedCategories) && fetchedCategories.length > 0) {
-        setCategories(fetchedCategories);
-
-        const matchedCategory = fetchedCategories.find(
-          (c) =>
-            (c.id || c.category_id || c.service_id)?.toString() === preselectedServiceId ||
-            c.name?.toLowerCase() === preselectedServiceName?.toLowerCase()
-        );
-
-        const activeCat = matchedCategory || fetchedCategories[0];
-        const activeCatId = activeCat.id || activeCat.category_id || activeCat.service_id;
-
-        console.log("🎯 Active Selected Category:", activeCat.name, "ID:", activeCatId);
-
-        setFormData((prev) => ({
-          ...prev,
-          categoryId: activeCatId,
-          selectedCategoryName: activeCat.name,
-        }));
-      } else {
-        setErrorMessage("No categories or services found in database response.");
-      }
-    } catch (err) {
-      console.error("❌ Initialization Fetch Error:", err);
-      setErrorMessage(err.message || "Failed to fetch data from backend server.");
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  initializeData();
-}, [preselectedServiceId, preselectedServiceName]);
-
-  // ----------------------------------------------------
-  // 2. Fetch Fixed-Price Problems for Selected Service
-  // ----------------------------------------------------
+  // 1. FETCH CATEGORY, PROBLEMS & CUSTOMER PROFILE ON LOAD
   useEffect(() => {
-    if (!formData.categoryId) return;
+    async function fetchInitData() {
+      if (!categoryId) return;
+      setLoading(true);
+      setError('');
 
-    const fetchCategoryProblems = async () => {
-      const token = localStorage.getItem("token") || localStorage.getItem("jwt");
+      const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+
       try {
-        const data = await safeFetchJson(
-          `${BACKEND_URL}/api/customer/services/${formData.categoryId}/problems`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await fetch(`http://localhost:5000/api/customer/booking-init/${categoryId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const result = await res.json();
 
-        const fetchedProblems = Array.isArray(data)
-          ? data
-          : data.problems || data.data || [];
+        if (result.success && result.data) {
+          setCategoryData(result.data.category);
+          setProblemsList(result.data.problems || []);
 
-        if (Array.isArray(fetchedProblems)) {
-          setAvailableProblems(fetchedProblems);
+          if (result.data.customer) {
+            setCustomerInfo({
+              full_name: result.data.customer.full_name || '',
+              email: result.data.customer.email || '',
+              phone: result.data.customer.phone || ''
+            });
+
+            if (result.data.customer.address) {
+              setAddress((prev) => ({ ...prev, street: result.data.customer.address }));
+            }
+          }
         } else {
-          setAvailableProblems([]);
+          setError(result.message || 'Failed to fetch category information.');
         }
       } catch (err) {
-        console.error("Failed to load category problems:", err);
-        setAvailableProblems([]);
+        setError('Error connecting to server.');
+      } finally {
+        setLoading(false);
       }
-    };
+    }
 
-    setFormData((prev) => ({ ...prev, selectedProblems: [] }));
-    fetchCategoryProblems();
-  }, [formData.categoryId]);
+    fetchInitData();
+  }, [categoryId]);
 
-  // Toggle problem selection
-  const handleProblemToggle = (problem) => {
-    const probId = problem.id || problem.problem_id;
-    setFormData((prev) => {
-      const exists = prev.selectedProblems.some((p) => (p.id || p.problem_id) === probId);
-      const updated = exists
-        ? prev.selectedProblems.filter((p) => (p.id || p.problem_id) !== probId)
-        : [...prev.selectedProblems, problem];
-      return { ...prev, selectedProblems: updated };
-    });
-  };
+  // 2. LIVE PRICING SUMMARY RECALCULATION
+  useEffect(() => {
+    async function fetchSummary() {
+      if (!selectedProblemId && !isCustomProblem) {
+        setSummaryData(null);
+        return;
+      }
 
-  // Pricing Logic
-  const basePrice = formData.selectedProblems.reduce(
-    (sum, p) => sum + (Number(p.price) || 0),
-    0
-  );
-  const platformFee = 29;
-  const emergencyAdvanceFee = formData.isEmergency ? 150 : 0;
-  const totalAmount = basePrice + platformFee + emergencyAdvanceFee;
+      const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
 
-  // ----------------------------------------------------
-  // 3. Submit Booking
-  // ----------------------------------------------------
+      try {
+        const res = await fetch('http://localhost:5000/api/customer/bookings/summary', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            problemId: selectedProblemId ? Number(selectedProblemId) : null,
+            isCustomProblem,
+            emergencyFlag
+          })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          setSummaryData(result.data);
+        }
+      } catch (err) {
+        console.error('Error fetching summary:', err);
+      }
+    }
+
+    fetchSummary();
+  }, [selectedProblemId, isCustomProblem, emergencyFlag]);
+
+  // 3. SUBMIT BOOKING TO BACKEND
   const handleSubmitBooking = async (e) => {
     e.preventDefault();
-    setErrorMessage("");
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
 
-    if (!formData.address.trim()) {
-      setErrorMessage("Service address is required.");
-      return;
-    }
-
-    if (formData.selectedProblems.length === 0 && !formData.customProblem.trim()) {
-      setErrorMessage("Please select at least one problem or describe your issue.");
-      return;
-    }
-
-    if (formData.isEmergency && !formData.emergencyReason.trim()) {
-      setErrorMessage("Please state the reason for your emergency booking.");
-      return;
-    }
-
-    const token = localStorage.getItem("token") || localStorage.getItem("jwt");
-    setIsSubmitting(true);
-
-    let scheduledAt = null;
-    if (formData.scheduleType === "scheduled" && formData.date && formData.time) {
-      scheduledAt = new Date(`${formData.date}T${formData.time}`).toISOString();
-    }
+    const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
 
     const payload = {
-      customer_id: userProfile.id,
-      category_id: formData.categoryId,
-      problem_ids: formData.selectedProblems.map((p) => p.id || p.problem_id),
-      custom_problem: formData.customProblem || null,
-      address: formData.address,
-      schedule_type: formData.scheduleType,
-      scheduled_at: scheduledAt,
-      is_emergency: formData.isEmergency,
-      emergency_reason: formData.isEmergency ? formData.emergencyReason : null,
-      advance_fee: emergencyAdvanceFee,
-      total_amount: totalAmount,
+      categoryId: Number(categoryId),
+      problemId: isCustomProblem || !selectedProblemId ? null : Number(selectedProblemId),
+      isCustomProblem,
+      customProblemDescription: isCustomProblem ? (issueDescription || '').substring(0, 90) : null,
+      issueDescription: (issueDescription || '').substring(0, 90) || null,
+      emergencyFlag,
+      emergencyReason: emergencyFlag ? (emergencyReason || '').substring(0, 90) : null,
+      preferredDate: anytimeService ? null : (preferredDate || null),
+      preferredTime: anytimeService ? null : (preferredTime || null),
+      anytimeService,
+      houseNumber: address.houseNumber ? String(address.houseNumber).substring(0, 50) : null,
+      apartmentName: address.apartmentName ? String(address.apartmentName).substring(0, 90) : null,
+      street: (address.street || '').substring(0, 90),
+      area: (address.area || '').substring(0, 90),
+      city: (address.city || 'Mangalore').substring(0, 90),
+      pincode: (address.pincode || '').substring(0, 10)
     };
 
     try {
-      const result = await safeFetchJson(`${BACKEND_URL}/api/customer/bookings`, {
-        method: "POST",
+      const res = await fetch('http://localhost:5000/api/customer/bookings', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payload)
       });
 
-      router.push(`/customer/bookingConfirmation?bookingId=${result.booking_id || result.id || result.data?.id}`);
+      const result = await res.json();
+
+      if (result.success) {
+        const createdBookingId = result.data?.bookingId || result.booking?.booking_id;
+        setSuccessMsg(`🎉 Booking created successfully! Booking ID: #${createdBookingId}`);
+        
+        setTimeout(() => {
+          router.push(`/customer/bookingConfirmation?bookingId=${createdBookingId}`);
+        }, 1200);
+      } else {
+        setError(result.message || 'Failed to submit booking.');
+      }
     } catch (err) {
-      setErrorMessage(err.message || "An error occurred while creating your booking.");
+      setError('Network error. Unable to process booking.');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  if (loadingProfile) {
-    return (
-      <div className="max-w-4xl mx-auto bg-white p-12 rounded-2xl shadow-md text-center space-y-3">
-        <Loader2 size={32} className="animate-spin text-[#FF5500] mx-auto" />
-        <p className="text-xs font-bold text-gray-600">Fetching customer profile & service details from database...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto bg-white border border-gray-200 rounded-2xl shadow-md p-6 sm:p-8 space-y-6 text-[#0F172A]">
-      
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-5 gap-4">
+    <div className="space-y-6">
+      {/* ELDERLY & SENIOR ASSISTANCE BANNER CARD */}
+      <ElderlySupport dispatcherPhone="+919876543210" />
+
+      <form onSubmit={handleSubmitBooking} className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-gray-100 space-y-6">
+        {/* HEADER */}
         <div>
-          <h1 className="text-2xl font-black text-[#0F172A]">Book a Service</h1>
-          <p className="text-xs text-gray-500">Auto-filled based on your selected service card.</p>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Service Booking</span>
+          <h2 className="text-2xl font-bold text-gray-900 mt-1">
+            {categoryData?.category_name || 'Book Service'}
+          </h2>
         </div>
-        <a
-          href="tel:+919876543210"
-          className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-[#FF5500] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition"
-        >
-          <PhoneCall size={15} className="text-[#FF5500]" />
-          <span>Call Dispatcher: +91 98765 43210</span>
-        </a>
-      </div>
 
-      {/* Error Alert Banner */}
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3.5 rounded-xl font-medium flex items-center gap-2">
-          <AlertTriangle size={16} className="shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* 1. Customer Account Details */}
-      <div>
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">
-          Logged-In Customer Details
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 border border-gray-200 p-3 rounded-xl text-xs font-medium">
-          <div className="flex items-center gap-2 truncate">
-            <User size={15} className="text-[#FF5500] shrink-0" />
-            <span className="truncate">{userProfile.name}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Phone size={15} className="text-[#FF5500] shrink-0" />
-            <span>{userProfile.phone}</span>
-          </div>
-          <div className="flex items-center gap-2 truncate">
-            <Mail size={15} className="text-[#FF5500] shrink-0" />
-            <span className="truncate">{userProfile.email}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Selected Service (Read-Only Badge - Dropdown Removed) */}
-      <div>
-        <label className="text-xs font-bold text-gray-700 block mb-1.5">Selected Service</label>
-        <div className="w-full border border-orange-200 rounded-xl p-3 bg-orange-50/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Wrench size={16} className="text-[#FF5500]" />
-            <span className="text-xs font-extrabold text-[#0F172A]">
-              {formData.selectedCategoryName || "Service Selected"}
-            </span>
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-wide bg-[#FF5500] text-white px-2 py-0.5 rounded-md">
-            Auto-Selected
-          </span>
-        </div>
-      </div>
-
-      {/* 3. Fixed Problems & Price Checklist */}
-      <div>
-        <label className="text-xs font-bold text-gray-700 block mb-2">
-          Fixed-Price Problems for {formData.selectedCategoryName}
-        </label>
-        {availableProblems.length === 0 ? (
-          <p className="text-xs text-gray-400 italic">No pre-set issues found for this service. Please describe below.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {availableProblems.map((prob, index) => {
-              const probId = prob.id || prob.problem_id;
-              const isChecked = formData.selectedProblems.some(
-                (p) => (p.id || p.problem_id) === probId
-              );
-              return (
-                <label
-                  key={probId || index}
-                  onClick={() => handleProblemToggle(prob)}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-xs cursor-pointer transition ${
-                    isChecked
-                      ? "border-[#FF5500] bg-orange-50/50 font-semibold text-[#0F172A]"
-                      : "border-gray-200 hover:border-gray-300 text-gray-600"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={isChecked} readOnly className="accent-[#FF5500]" />
-                    <span>{prob.title || prob.name}</span>
-                  </div>
-                  <span className="font-bold text-[#FF5500]">₹{prob.price}</span>
-                </label>
-              );
-            })}
+        {/* ERROR & SUCCESS MESSAGES */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-2xl text-sm font-medium">
+            {error}
           </div>
         )}
-      </div>
-
-      {/* 4. Custom Problem Box */}
-      <div>
-        <label className="text-xs font-bold text-gray-700 block mb-1">
-          Custom Problem / Specific Description
-        </label>
-        <textarea
-          rows={2}
-          placeholder="Describe your issue if not listed in the preset options..."
-          value={formData.customProblem}
-          onChange={(e) => setFormData({ ...formData, customProblem: e.target.value })}
-          className="w-full border border-gray-300 rounded-xl p-3 text-xs outline-none focus:border-[#FF5500]"
-        />
-        {formData.customProblem && (
-          <p className="text-[11px] text-amber-600 font-medium mt-1">
-            * Custom problems will be verified on-site by technician before final quote.
-          </p>
+        {successMsg && (
+          <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-2xl text-sm font-bold">
+            {successMsg}
+          </div>
         )}
-      </div>
 
-      {/* 5. Emergency Priority Toggle */}
-      <div className={`p-4 rounded-xl border transition ${formData.isEmergency ? "bg-orange-50 border-[#FF5500]" : "bg-gray-50 border-gray-200"}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={18} className={formData.isEmergency ? "text-[#FF5500]" : "text-gray-400"} />
+        {/* READ-ONLY CUSTOMER INFORMATION */}
+        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Customer Contact Info (Read Only)</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
-              <span className="text-xs font-bold block">Is this an Emergency Booking?</span>
-              <span className="text-[11px] text-gray-500">Triggers instant alert to nearby technicians & dispatchers.</span>
+              <label className="text-xs text-gray-500 font-semibold">Name</label>
+              <input
+                type="text"
+                readOnly
+                value={customerInfo.full_name}
+                className="w-full bg-gray-200 text-gray-700 p-2.5 rounded-xl text-sm font-medium border border-gray-300 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-semibold">Phone</label>
+              <input
+                type="text"
+                readOnly
+                value={customerInfo.phone}
+                className="w-full bg-gray-200 text-gray-700 p-2.5 rounded-xl text-sm font-medium border border-gray-300 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-semibold">Email</label>
+              <input
+                type="email"
+                readOnly
+                value={customerInfo.email}
+                className="w-full bg-gray-200 text-gray-700 p-2.5 rounded-xl text-sm font-medium border border-gray-300 cursor-not-allowed"
+              />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setFormData({ ...formData, isEmergency: !formData.isEmergency })}
-            className={`w-11 h-6 rounded-full transition p-0.5 ${formData.isEmergency ? "bg-[#FF5500]" : "bg-gray-300"}`}
-          >
-            <div className={`w-5 h-5 bg-white rounded-full transition transform ${formData.isEmergency ? "translate-x-5" : "translate-x-0"}`} />
-          </button>
         </div>
 
-        {formData.isEmergency && (
-          <div className="mt-3 pt-3 border-t border-orange-200 space-y-2">
-            <label className="text-xs font-bold text-[#0F172A]">Reason for Emergency (Notified to Dispatcher)</label>
+        {/* PROBLEM SELECTION LIST */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-gray-700">Select Specific Issue:</p>
+          
+          {problemsList.map((prob) => (
+            <label
+              key={prob.problem_id}
+              className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition ${
+                selectedProblemId === prob.problem_id && !isCustomProblem
+                  ? 'border-orange-500 bg-orange-50/40'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  name="problem"
+                  value={prob.problem_id}
+                  checked={selectedProblemId === prob.problem_id && !isCustomProblem}
+                  onChange={() => {
+                    setSelectedProblemId(prob.problem_id);
+                    setIsCustomProblem(false);
+                  }}
+                  className="accent-orange-500 w-4 h-4"
+                />
+                <span className="font-medium text-gray-800">{prob.problem_name}</span>
+              </div>
+              <span className="font-bold text-orange-600">
+                {prob.fixed_price ? `₹${prob.fixed_price}` : 'Inspection Required'}
+              </span>
+            </label>
+          ))}
+
+          {/* CUSTOM PROBLEM OPTION */}
+          <label
+            className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition ${
+              isCustomProblem ? 'border-orange-500 bg-orange-50/40' : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <input
+                type="radio"
+                name="problem"
+                value="custom"
+                checked={isCustomProblem}
+                onChange={() => {
+                  setSelectedProblemId('');
+                  setIsCustomProblem(true);
+                }}
+                className="accent-orange-500 w-4 h-4"
+              />
+              <span className="font-medium text-gray-800">Other / Custom Issue</span>
+            </div>
+            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">On-Site Quote</span>
+          </label>
+        </div>
+
+        {/* ISSUE DESCRIPTION */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-gray-600 uppercase">Issue Description</label>
+          <textarea
+            placeholder={isCustomProblem ? "Describe custom problem in detail (Required)..." : "Provide any additional details about the issue..."}
+            value={issueDescription}
+            onChange={(e) => setIssueDescription(e.target.value)}
+            rows={3}
+            required={isCustomProblem}
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-900 focus:outline-none focus:border-orange-500"
+          />
+          {isCustomProblem && (
+            <p className="text-xs text-orange-600 font-medium">
+              Final price will be decided after technician inspection.
+            </p>
+          )}
+        </div>
+
+        {/* EMERGENCY TOGGLE */}
+        <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3">
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={emergencyFlag}
+              onChange={(e) => setEmergencyFlag(e.target.checked)}
+              className="w-4 h-4 accent-orange-500"
+            />
+            <span className="font-bold text-amber-900 text-sm">Emergency Booking (Priority Dispatch)</span>
+          </label>
+
+          {emergencyFlag && (
             <input
               type="text"
-              placeholder="e.g. Major water leak, short circuit risk"
-              value={formData.emergencyReason}
-              onChange={(e) => setFormData({ ...formData, emergencyReason: e.target.value })}
-              className="w-full border border-orange-300 bg-white rounded-lg p-2 text-xs outline-none"
+              placeholder="Reason for emergency (Required)..."
+              value={emergencyReason}
+              onChange={(e) => setEmergencyReason(e.target.value)}
+              required
+              className="w-full bg-white border border-amber-300 rounded-xl p-3 text-sm text-gray-900 focus:outline-none focus:border-orange-500"
             />
-            <p className="text-[11px] text-[#FF5500] font-semibold">
-              ⚡ Emergency booking requires an advance payment of ₹150 for priority dispatch.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* 6. Address & Schedule Options */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs font-bold text-gray-700 block mb-1">Service Address</label>
-          <textarea
-            rows={3}
-            placeholder="Enter house no, street, landmark..."
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            className="w-full border border-gray-300 rounded-xl p-3 text-xs outline-none focus:border-[#FF5500]"
-          />
+          )}
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-gray-700 block mb-1">Time Preference</label>
-          <div className="flex gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, scheduleType: "anytime" })}
-              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition ${
-                formData.scheduleType === "anytime"
-                  ? "bg-orange-50 border-[#FF5500] text-[#FF5500]"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              🚀 Send Anytime
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, scheduleType: "scheduled" })}
-              className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition ${
-                formData.scheduleType === "scheduled"
-                  ? "bg-orange-50 border-[#FF5500] text-[#FF5500]"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              📅 Specific Time
-            </button>
+        {/* LIVE PRICING SUMMARY DISPLAY */}
+        {summaryData && (
+          <div className="p-4 bg-gray-900 text-white rounded-2xl space-y-2">
+            <h4 className="text-xs font-bold uppercase text-orange-400 tracking-wider">Estimated Pricing Summary</h4>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-300">Base Price:</span>
+              <span className="font-semibold">{summaryData.basePrice !== null ? `₹${summaryData.basePrice}` : 'To be decided after inspection'}</span>
+            </div>
+            {summaryData.emergencyCharge > 0 && (
+              <div className="flex justify-between text-sm text-amber-400">
+                <span>Emergency Charge:</span>
+                <span className="font-semibold">+₹{summaryData.emergencyCharge}</span>
+              </div>
+            )}
+            {summaryData.advanceAmount > 0 && (
+              <div className="flex justify-between text-sm text-green-400">
+                <span>Advance Payment:</span>
+                <span className="font-semibold">₹{summaryData.advanceAmount}</span>
+              </div>
+            )}
+            <div className="pt-2 border-t border-gray-800 flex justify-between text-base font-bold text-orange-400">
+              <span>Estimated Grand Total:</span>
+              <span>{summaryData.grandTotal !== null ? `₹${summaryData.grandTotal}` : 'Pending Inspection'}</span>
+            </div>
+            <p className="text-xs text-gray-400 italic pt-1">{summaryData.priceMessage}</p>
+          </div>
+        )}
+
+        {/* DETAILED ADDRESS INPUTS */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-sm font-bold text-gray-800">Service Location</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <input
+              type="text"
+              placeholder="House / Door No."
+              value={address.houseNumber}
+              onChange={(e) => setAddress({ ...address, houseNumber: e.target.value })}
+              className="bg-gray-50 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+            />
+            <input
+              type="text"
+              placeholder="Apartment / Building"
+              value={address.apartmentName}
+              onChange={(e) => setAddress({ ...address, apartmentName: e.target.value })}
+              className="bg-gray-50 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+            />
+            <input
+              type="text"
+              placeholder="Street *"
+              value={address.street}
+              onChange={(e) => setAddress({ ...address, street: e.target.value })}
+              required
+              className="bg-gray-50 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+            />
+            <input
+              type="text"
+              placeholder="Area / Landmark *"
+              value={address.area}
+              onChange={(e) => setAddress({ ...address, area: e.target.value })}
+              required
+              className="bg-gray-50 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+            />
+            <input
+              type="text"
+              placeholder="City *"
+              value={address.city}
+              onChange={(e) => setAddress({ ...address, city: e.target.value })}
+              required
+              className="bg-gray-50 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+            />
+            <input
+              type="text"
+              placeholder="Pincode *"
+              value={address.pincode}
+              onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
+              required
+              className="bg-gray-50 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500"
+            />
+          </div>
+        </div>
+
+        {/* SCHEDULE */}
+        <div className="space-y-3 pt-2">
+          <label className="text-sm font-bold text-gray-800">Preferred Schedule</label>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="anytime"
+              checked={anytimeService}
+              onChange={(e) => setAnytimeService(e.target.checked)}
+              className="accent-orange-500 w-4 h-4"
+            />
+            <label htmlFor="anytime" className="text-sm text-gray-700">Anytime Service (As soon as available)</label>
           </div>
 
-          {formData.scheduleType === "scheduled" && (
-            <div className="grid grid-cols-2 gap-2">
+          {!anytimeService && (
+            <div className="grid grid-cols-2 gap-3">
               <input
                 type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="border border-gray-300 rounded-lg p-2 text-xs outline-none"
+                value={preferredDate}
+                onChange={(e) => setPreferredDate(e.target.value)}
+                className="bg-gray-50 p-3 border border-gray-200 rounded-xl text-sm"
               />
               <input
                 type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                className="border border-gray-300 rounded-lg p-2 text-xs outline-none"
+                value={preferredTime}
+                onChange={(e) => setPreferredTime(e.target.value)}
+                className="bg-gray-50 p-3 border border-gray-200 rounded-xl text-sm"
               />
             </div>
           )}
         </div>
-      </div>
 
-      {/* 7. Pricing Summary & Final Booking Submission */}
-      <div className="bg-[#0F172A] text-white rounded-xl p-5 space-y-3">
-        <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Live Booking Summary</span>
-          <span className="text-xs bg-[#FF5500] text-white px-2.5 py-1 rounded font-bold">
-            {formData.selectedCategoryName || "Service"}
-          </span>
-        </div>
-
-        <div className="text-xs space-y-1.5 text-gray-300">
-          <div className="flex justify-between">
-            <span>Fixed Problems ({formData.selectedProblems.length}):</span>
-            <span className="font-semibold text-white">₹{basePrice}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span>Platform Fee:</span>
-            <span className="font-semibold text-white">₹{platformFee}</span>
-          </div>
-
-          {formData.isEmergency && (
-            <div className="flex justify-between text-[#FF5500] font-bold">
-              <span>Emergency Advance Fee:</span>
-              <span>+ ₹{emergencyAdvanceFee}</span>
-            </div>
-          )}
-
-          <div className="flex justify-between pt-2 border-t border-gray-800 text-sm font-black text-white">
-            <span>Total Payable:</span>
-            <span className="text-[#FF5500] text-base">₹{totalAmount}</span>
-          </div>
-        </div>
-
+        {/* SUBMIT BUTTON */}
         <button
-          type="button"
-          onClick={handleSubmitBooking}
-          disabled={isSubmitting}
-          className="w-full bg-[#FF5500] hover:bg-[#e04b00] disabled:bg-gray-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md mt-2 cursor-pointer"
+          type="submit"
+          disabled={loading || (!selectedProblemId && !isCustomProblem)}
+          className="w-full py-4 bg-black hover:bg-orange-500 text-white font-bold rounded-xl transition shadow-lg disabled:opacity-50"
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 size={16} className="animate-spin" />
-              <span>Submitting Booking...</span>
-            </>
-          ) : (
-            <>
-              <span>Submit Booking & Proceed</span>
-              <ArrowRight size={15} />
-            </>
-          )}
+          {loading ? 'Submitting Request...' : 'Book Service Now'}
         </button>
-
-        <div className="flex items-center justify-center gap-1.5 text-gray-400 text-[10px] pt-1">
-          <ShieldCheck size={13} className="text-[#FF5500]" />
-          <span>Verified Local Technicians • Direct Dispatcher Alerts</span>
-        </div>
-      </div>
-
+      </form>
     </div>
   );
 }

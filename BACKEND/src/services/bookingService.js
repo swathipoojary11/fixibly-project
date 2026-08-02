@@ -1,155 +1,110 @@
-// const createBookingService = (bookingData) => {
-
-//     // For now, we are only preparing the booking data.
-//     // Supabase will be connected here later.
-
-//  const booking = {
-//         bookingId: "BK-" + Date.now(),
-//         ...bookingData,
-//         status: "Pending",
-//         paymentStatus: "Pending"
-//     };
-
-//     return booking;
-// };
-
-// module.exports = {
-//     createBookingService
-// };
-
 // backend/src/services/bookingService.js
-// const bookingRepository = require('../repositories/bookingRepository');
-// const supabase = require('../config/supabase');
+// Business logic wrapper for booking calculations, cancellations, completions, and feedback.
 
-// const createCustomerBooking = async (customerId, payload) => {
-//   const {
-//     category_id,
-//     problem_id,
-//     issue_description,
-//     emergency_flag,
-//     emergency_reason,
-//     preferred_date,
-//     preferred_time,
-//     anytime_service,
-//     house_number,
-//     apartment_name,
-//     street,
-//     area,
-//     city,
-//     state,
-//     pincode
-//   } = payload;
-
-//   // Business Rule: Check if problem has a fixed price
-//   let estimated_amount = null;
-//   if (problem_id) {
-//     const { data: problem } = await supabase
-//       .from('service_problems')
-//       .select('fixed_price')
-//       .eq('problem_id', problem_id)
-//       .single();
-
-//     if (problem && problem.fixed_price) {
-//       estimated_amount = problem.fixed_price;
-//     }
-//   }
-
-//   const priority = emergency_flag ? 'Emergency' : 'Normal';
-//   const advance_amount = emergency_flag ? 300.00 : 0.00; // Fixed advance fee for emergencies
-
-//   const bookingData = {
-//     customer_id: customerId,
-//     category_id,
-//     problem_id: problem_id || null,
-//     issue_description: issue_description || null,
-//     emergency_flag: Boolean(emergency_flag),
-//     emergency_reason: emergency_flag ? emergency_reason : null,
-//     priority,
-//     preferred_date: anytime_service ? null : preferred_date,
-//     preferred_time: anytime_service ? null : preferred_time,
-//     anytime_service: Boolean(anytime_service),
-//     house_number,
-//     apartment_name,
-//     street,
-//     area,
-//     city,
-//     state,
-//     pincode,
-//     estimated_amount,
-//     advance_amount
-//   };
-
-//   return await bookingRepository.createBookingTransaction(bookingData);
-// };
-
-// module.exports = {
-//   createCustomerBooking
-// };
-
-// src/repositories/bookingRepository.js
-// src/services/bookingService.js
-// src/services/bookingService.js
 const bookingRepository = require('../repositories/bookingRepository');
-const { supabase } = require('../config/supabase');
+const serviceRepository = require('../repositories/serviceRepository');
 
 class BookingService {
-  async getBookingFormInitData(userId, categoryId) {
-    const [customer, category, problems] = await Promise.all([
-      bookingRepository.getUserProfile(userId),
-      bookingRepository.getCategoryById(categoryId),
-      bookingRepository.getCategoryProblems(categoryId)
-    ]);
-
-    return {
-      customer,
-      category,
-      problems
-    };
-  }
-
-  // STEP 2: Calculate Pricing & Summary
-  async calculateBookingSummary(payload) {
-    const { problemId, isCustomProblem, emergencyFlag } = payload;
+  // Calculate price summary (Base Price, Emergency Charge, Advance Amount, Grand Total)
+  async calculateBookingSummary(params) {
+    const { problemId, isCustomProblem, emergencyFlag } = params;
 
     let basePrice = null;
-    let isInspectionRequired = false;
 
-    // 1. Determine Base Price
-    if (isCustomProblem || !problemId) {
-      isInspectionRequired = true;
-      basePrice = null;
-    } else {
-      // Lookup fixed price for the chosen problem
-      const { data: problem, error } = await supabase
-        .from('service_problems')
-        .select('fixed_price')
-        .eq('problem_id', problemId)
-        .single();
-
-      if (error || !problem || problem.fixed_price === null) {
-        isInspectionRequired = true;
-        basePrice = null;
-      } else {
-        basePrice = parseFloat(problem.fixed_price);
+    // 1. Fetching fixed price if predefined problem is selected
+    if (problemId && !isCustomProblem) {
+      const problem = await bookingRepository.getProblemById(problemId);
+      if (problem && problem.fixed_price !== null) {
+        basePrice = Number(problem.fixed_price);
       }
     }
 
-    // 2. Dynamic Emergency Surcharge
-    const emergencyCharge = emergencyFlag ? 300.00 : 0.00;
+    // 2. Calculating Emergency Charge (₹300) and Advance Amount (₹200)
+    const emergencyCharge = emergencyFlag ? 300 : 0;
+    const advanceAmount = emergencyFlag ? 200 : 0;
 
-    // 3. Grand Total Calculation
-    const grandTotal = (basePrice !== null) ? (basePrice + emergencyCharge) : null;
+    let grandTotal = null;
+    let priceMessage = 'Final price will be provided after on-site technician inspection.';
+
+    if (basePrice !== null) {
+      grandTotal = basePrice + emergencyCharge;
+      priceMessage = `Estimated Total: ₹${grandTotal} (Base ₹${basePrice} + Emergency ₹${emergencyCharge})`;
+    } else if (emergencyFlag) {
+      priceMessage = 'Advance Payment ₹200 required for emergency dispatch. Remaining balance decided after inspection.';
+    }
 
     return {
       basePrice,
       emergencyCharge,
+      advanceAmount,
       grandTotal,
-      isInspectionRequired,
-      advancePaymentRequired: emergencyFlag ? emergencyCharge : 0.00,
-      priceMessage: isInspectionRequired
-        ? "Final price will be decided after technician inspection."
-        : "Fixed price calculated based on selected service."
+      priceMessage
     };
+  }
+
+  // Create customer booking payload and save into Supabase
+  async createCustomerBooking(customerId, payload) {
+    // 1. Calculating pricing summary
+    const summary = await this.calculateBookingSummary({
+      problemId: payload.problemId,
+      isCustomProblem: !payload.problemId || payload.isCustomProblem,
+      emergencyFlag: payload.emergencyFlag
+    });
+
+    // 2. Formatting complete booking object for repository insertion
+    const bookingPayload = {
+      ...payload,
+      customerId,
+      estimatedAmount: summary.grandTotal,
+      advanceAmount: summary.advanceAmount
+    };
+
+    return await bookingRepository.createBookingTransaction(bookingPayload);
+  }
+
+  // Fetch full details of a specific booking
+  async getBookingDetails(bookingId) {
+    return await bookingRepository.getBookingDetailsById(bookingId);
+  }
+
+  // Fetch live tracking details and technician location
+  async getTrackingDetails(bookingId) {
+    return await bookingRepository.getBookingTrackingDetails(bookingId);
+  }
+
+  // Cancel booking with 40-minute ETA rule check
+  async cancelCustomerBooking(bookingId, userId, reason) {
+    return await bookingRepository.cancelBookingById(bookingId, userId, reason);
+  }
+
+  // Complete customer booking handshake
+  async completeCustomerBooking(bookingId, userId) {
+    return await bookingRepository.completeBookingById(bookingId, userId);
+  }
+
+  // Submit technician rating and comments
+  async submitTechnicianFeedback(bookingId, customerId, feedbackData) {
+    return await bookingRepository.submitFeedback(bookingId, customerId, feedbackData);
+  }
+
+  // Submit platform experience feedback
+  async submitPlatformFeedback(customerId, rating, comments) {
+    return await bookingRepository.submitAppFeedback(customerId, rating, comments);
+  }
+
+  // Fetch complete booking history for customer
+  async getCustomerBookingHistory(userId) {
+    return await bookingRepository.getCustomerHistory(userId);
+  }
+
+  // Fetch customer notifications list
+  async getNotifications(userId) {
+    return await bookingRepository.getCustomerNotifications(userId);
+  }
+
+  // Mark notification read status
+  async markNotificationRead(notificationId, userId) {
+    return await bookingRepository.markNotificationAsRead(notificationId, userId);
   }
 }
 

@@ -14,4 +14,4 @@ const fetchProblemsByCategory = async (categoryId) => {
 module.exports = {
   fetchServiceCategories,
   fetchProblemsByCategory
-};
+};
