@@ -41,7 +41,7 @@
 //     createBooking
 // };
 
-const supabase = require("../config/supabase");
+const supabase = require("../config/supabase.js");
 
 // const getServiceCategories = async (req, res) => {
 //     try {
@@ -471,13 +471,19 @@ const supabase = require("../config/supabase");
 
 
 // backend/src/controllers/customerController.js
-const serviceService = require('../services/serviceService');
 
-// Handlers
+// backend/src/controllers/customerController.js
+// const supabase = require("../config/supabase");
+// src/controllers/customerController.js
+const serviceService = require('../services/serviceService');
+const bookingService = require('../services/bookingService');
+
+// 1. Get Logged-in User Profile
 const getProfile = async (req, res) => {
   return res.status(200).json({ success: true, message: "Profile endpoint" });
 };
 
+// 2. Fetch Service Categories for Dashboard
 const getServiceCategories = async (req, res) => {
   try {
     const categories = await serviceService.fetchServiceCategories();
@@ -487,30 +493,77 @@ const getServiceCategories = async (req, res) => {
   }
 };
 
-const getServiceProblems = async (req, res) => {
+// 3. STEP 1 ENDPOINT: Hydrate Booking Page (Profile + Category + Problems)
+const getBookingInitData = async (req, res) => {
   try {
+    const userId = req.user.user_id; // Extracted from JWT auth middleware
     const { categoryId } = req.params;
-    const problems = await serviceService.fetchProblemsByCategory(categoryId);
-    return res.status(200).json({ success: true, count: problems.length, data: problems });
+
+    const data = await bookingService.getBookingFormInitData(userId, categoryId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking initial data fetched successfully",
+      data
+    });
   } catch (error) {
+    console.error("Error in getBookingInitData controller:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
+// 4. Create Booking Endpoint (Will refine in Step 3)
+const createBooking = async (req, res) => {
+  try {
+    const customerId = req.user.user_id; // Extract from JWT authMiddleware
+    const booking = await bookingService.createCustomerBooking(customerId, req.body);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Booking created successfully',
+      data: booking
+    });
+  } catch (error) {
+    console.error('Error in createBooking controller:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server error while creating booking'
+    });
+  }
+};
+
+
+const getBookingSummary = async (req, res) => {
+  try {
+    const summary = await bookingService.calculateBookingSummary(req.body);
+    return res.status(200).json({
+      success: true,
+      message: "Booking summary calculated successfully",
+      data: summary
+    });
+  } catch (error) {
+    console.error("Error in getBookingSummary controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server error while calculating summary"
+    });
+  }
+};
+
+
 // Stubs for future endpoints
-const createBooking = async (req, res) => res.status(501).json({ message: "Not implemented" });
 const getBookingById = async (req, res) => res.status(501).json({ message: "Not implemented" });
 const getCustomerHistory = async (req, res) => res.status(501).json({ message: "Not implemented" });
 const cancelBooking = async (req, res) => res.status(501).json({ message: "Not implemented" });
 const submitFeedback = async (req, res) => res.status(501).json({ message: "Not implemented" });
-
 module.exports = {
   getProfile,
   getServiceCategories,
-  getServiceProblems,
+  getBookingInitData,
   createBooking,
   getBookingById,
   getCustomerHistory,
   cancelBooking,
-  submitFeedback
+  submitFeedback,
+  getBookingSummary // ✅ Complete the function name and close the object/file
 };
