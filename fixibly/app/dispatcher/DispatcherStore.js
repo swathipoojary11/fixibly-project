@@ -3,6 +3,24 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 const DispatcherContext = createContext(null);
 
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+const safeFetchJson = async (url, options) => {
+    try {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+            return { success: false, status: res.status };
+        }
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+            return { success: false, message: "Response is not JSON" };
+        }
+        return await res.json();
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+};
+
 export function DispatcherStoreProvider({ children }) {
     const [bookings, setBookings] = useState([]);
     const [emergencies, setEmergencies] = useState([]);
@@ -19,8 +37,8 @@ export function DispatcherStoreProvider({ children }) {
             setFetchError(null);
             try {
                 const [statsRes, notifsRes] = await Promise.all([
-                    fetch("http://localhost:5000/api/v1/dispatcher/dashboard-stats").then(r => r.json()),
-                    fetch("http://localhost:5000/api/v1/notifications?role=DISPATCHER").then(r => r.json())
+                    safeFetchJson(`${API}/dispatcher/dashboard-stats`),
+                    safeFetchJson(`${API}/notifications?role=DISPATCHER`)
                 ]);
 
                 const mapTech = t => ({
@@ -55,7 +73,7 @@ export function DispatcherStoreProvider({ children }) {
                     needsReassign: b.booking_status === 'Cancelled' && !!b.technician_id
                 });
 
-                if (statsRes.success) {
+                if (statsRes?.success) {
                     const rawBookings = (statsRes.bookings || []).map(mapBooking);
                     const rawEmergencies = (statsRes.emergencies || []).map(mapBooking);
                     const rawTechs = (statsRes.technicians || []).map(mapTech);
@@ -74,7 +92,7 @@ export function DispatcherStoreProvider({ children }) {
                     setCancelledBookings((statsRes.cancelledBookings || []).map(mapBooking));
                     setTechnicians(enrichedTechs);
                 }
-                if (notifsRes.success) {
+                if (notifsRes?.success) {
                     setDispNotifs((notifsRes.notifications || []).map(n => ({ ...n, id: n.notification_id || n.id, read: Boolean(n.is_read) })));
                 }
             } catch (err) {
@@ -111,7 +129,7 @@ export function DispatcherStoreProvider({ children }) {
 
     const assignTechnician = async (bookingId, tech, isEmergency = false) => {
         try {
-            await fetch("http://localhost:5000/api/v1/dispatcher/assign", {
+            await fetch(`${API}/dispatcher/assign`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bookingId, technicianId: tech.id })
@@ -129,7 +147,7 @@ export function DispatcherStoreProvider({ children }) {
     const reassignBooking = async (cancelledBookingId, tech) => {
         try {
             const target = cancelledBookings.find(b => b.id === cancelledBookingId);
-            await fetch("http://localhost:5000/api/v1/dispatcher/reassign", {
+            await fetch(`${API}/dispatcher/reassign`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -147,6 +165,7 @@ export function DispatcherStoreProvider({ children }) {
             console.error(err);
         }
     };
+
 const CATEGORY_MAP = {
     "Plumber": 1, "Electrician": 2, "AC Repair": 3, "Painter": 5, "Carpenter": 6
 };
@@ -160,12 +179,12 @@ const createBooking = async (booking) => {
         const preferredTime = booking.scheduledAt ? booking.scheduledAt.split("T")[1]?.split(".")[0] : null;
 
         const customerResponse = await fetch(
-            `http://localhost:5000/api/v1/dispatcher/customer?phone=${encodeURIComponent(booking.phone)}`
+            `${API}/dispatcher/customer?phone=${encodeURIComponent(booking.phone)}`
         );
         const customerData = await customerResponse.json();
         const customer = customerData.success ? customerData.customer : null;
 
-        const response = await fetch("http://localhost:5000/api/v1/dispatcher/manual-booking", {
+        const response = await fetch(`${API}/dispatcher/manual-booking`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -218,19 +237,20 @@ const createBooking = async (booking) => {
         });
 
         return {
-    id: data.booking.booking_id,
-    customer: booking.customer,
-    category: booking.category,
-    priority: booking.priority,
-    emergency: booking.emergency
-};
+            id: data.booking.booking_id,
+            customer: booking.customer,
+            category: booking.category,
+            priority: booking.priority,
+            emergency: booking.emergency
+        };
     } catch (err) {
         console.error(err);
     }
 };
+
     const qualifyToNormal = async (emergencyId, reason) => {
         try {
-            await fetch("http://localhost:5000/api/v1/dispatcher/emergency/downgrade", {
+            await fetch(`${API}/dispatcher/emergency/downgrade`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bookingId: emergencyId, reason, dispatcherUserId: null })
@@ -246,9 +266,10 @@ const createBooking = async (booking) => {
             console.error(err);
         }
     };
+
     const updateTechnicianStatus = async (bookingId, statusType, location = null) => {
         try {
-            await fetch("http://localhost:5000/api/v1/dispatcher/status", {
+            await fetch(`${API}/dispatcher/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bookingId, status: statusType, role: 'TECHNICIAN' })
@@ -268,9 +289,10 @@ const createBooking = async (booking) => {
             console.error(err);
         }
     };
+
     const customerMarkCompleted = async (bookingId) => {
         try {
-            await fetch("http://localhost:5000/api/v1/dispatcher/status", {
+            await fetch(`${API}/dispatcher/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bookingId, status: "Completed", role: 'CUSTOMER' })
@@ -285,7 +307,7 @@ const createBooking = async (booking) => {
 
     const markNotifsReadAsync = async () => {
         try {
-            await fetch("http://localhost:5000/api/v1/notifications/mark-read", {
+            await fetch(`${API}/notifications/mark-read`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ role: "DISPATCHER" })

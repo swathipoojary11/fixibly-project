@@ -37,17 +37,42 @@ function LoginForm() {
     if (queryEmail) setEmail(queryEmail);
   }, [queryRole, queryEmail]);
 
-  const navigateToDashboard = (roleId, selectedRole) => {
-    const activeRole = (selectedRole || 'customer').toLowerCase();
-    
-    if (roleId === 1 || activeRole === 'customer') {
-      router.push('/customer');
-    } else if (roleId === 2 || activeRole === 'technician') {
-      router.push('/technician');
-    } else if (roleId === 3 || activeRole === 'dispatcher') {
+  const navigateToDashboard = (backendUser, selectedRole, emailInput) => {
+    let targetRole = '';
+
+    if (backendUser) {
+      const rId = backendUser.role_id || backendUser.roleId;
+      const rName = (backendUser.role_name || backendUser.role || '').toString().toLowerCase();
+
+      if (rId === 3 || rId === '3' || rName === 'dispatcher') {
+        targetRole = 'dispatcher';
+      } else if (rId === 4 || rId === '4' || rName === 'admin') {
+        targetRole = 'admin';
+      } else if (rId === 2 || rId === '2' || rName === 'technician') {
+        targetRole = 'technician';
+      } else if (rId === 1 || rId === '1' || rName === 'customer') {
+        targetRole = 'customer';
+      }
+    }
+
+    if (!targetRole && emailInput) {
+      const lowerEmail = emailInput.toLowerCase();
+      if (lowerEmail.includes('dispatcher')) targetRole = 'dispatcher';
+      else if (lowerEmail.includes('admin')) targetRole = 'admin';
+      else if (lowerEmail.includes('technician') || lowerEmail.includes('tech')) targetRole = 'technician';
+      else if (lowerEmail.includes('customer')) targetRole = 'customer';
+    }
+
+    if (!targetRole) {
+      targetRole = (selectedRole || 'customer').toLowerCase();
+    }
+
+    if (targetRole === 'dispatcher') {
       router.push('/dispatcher');
-    } else if (roleId === 4 || activeRole === 'admin') {
+    } else if (targetRole === 'admin') {
       router.push('/admin');
+    } else if (targetRole === 'technician') {
+      router.push('/technician');
     } else {
       router.push('/customer');
     }
@@ -88,7 +113,7 @@ function LoginForm() {
         }
         setSuccess(result.message || 'Login successful!');
         setTimeout(() => {
-          navigateToDashboard(result.data?.user?.role_id, role);
+          navigateToDashboard(result.data?.user, role, email);
         }, 800);
       } else {
         // Handle custom / demo role account sign-ins cleanly
@@ -100,7 +125,7 @@ function LoginForm() {
         localStorage.setItem('user', JSON.stringify(userSession));
         setSuccess(`Signed in as ${role.toUpperCase()}! Redirecting to dashboard...`);
         setTimeout(() => {
-          navigateToDashboard(null, role);
+          navigateToDashboard(userSession, role, email);
         }, 800);
       }
     } catch (err) {
@@ -114,7 +139,7 @@ function LoginForm() {
       localStorage.setItem('user', JSON.stringify(userSession));
       setSuccess(`Signed in as ${role.toUpperCase()}! Redirecting to dashboard...`);
       setTimeout(() => {
-        navigateToDashboard(null, role);
+        navigateToDashboard(userSession, role, email);
       }, 800);
     }
   };
