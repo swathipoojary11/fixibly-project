@@ -105,67 +105,226 @@
 // );
 
 // module.exports = router;
+// const express = require("express");
+// const router = express.Router();
+// const { authenticateUser } = require("../middleware/authMiddleware");
+// const authorizeRoles = require("../middleware/roleMiddleware");
+// const {
+//   getProfile,
+//   getServiceCategories,
+//   getServiceProblems,
+//   createBooking,
+//   getBookingById,
+//   getCustomerHistory,
+//   cancelBooking,
+//   submitFeedback
+// } = require("../controllers/customerController");
+
+// // 1. Customer Profile
+// router.get(
+//   "/profile",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   getProfile
+// );
+
+// // 2. Service Catalog
+// router.get("/services", getServiceCategories);
+
+// router.get(
+//   "/services/:categoryId/problems",
+//   getServiceProblems
+// );
+// router.get('/booking-init/:categoryId', authenticateToken, customerController.getBookingInitData);
+
+// // 3. Bookings Lifecycle
+// router.post(
+//   "/bookings",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   createBooking
+// );
+
+// router.get(
+//   "/bookings/history",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   getCustomerHistory
+// );
+
+// router.get(
+//   "/bookings/:bookingId",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   getBookingById
+// );
+
+// router.patch(
+//   "/bookings/:bookingId/cancel",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   cancelBooking
+// );
+
+// // 4. Feedback
+// router.post(
+//   "/feedback",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   submitFeedback
+// );
+
+// module.exports = router;
+// const express = require("express");
+// const router = express.Router();
+
+// // Middleware Imports
+// const { authenticateUser } = require("../middleware/authMiddleware");
+// const authorizeRoles = require("../middleware/roleMiddleware");
+
+// // Controller Imports
+// const {
+//   getProfile,
+//   getServiceCategories,
+//   getBookingInitData, // Added this
+//   createBooking,
+//   getBookingById,
+//   getCustomerHistory,
+//   cancelBooking,
+//   submitFeedback
+// } = require("../controllers/customerController");
+
+// // 1. Customer Profile
+// router.get(
+//   "/profile",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   getProfile
+// );
+
+// // 2. Service Catalog
+// router.get("/services", getServiceCategories);
+
+// // Step 1: Init Data for Booking (Profile + Categories + Problems)
+// router.get(
+//   "/booking-init/:categoryId",
+//   authenticateUser, // Fixed: changed from authenticateToken
+//   authorizeRoles("Customer"),
+//   getBookingInitData // Fixed: changed from customerController.getBookingInitData
+// );
+
+// // 3. Bookings Lifecycle
+// router.post(
+//   "/bookings",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   createBooking
+// );
+
+// router.get(
+//   "/bookings/history",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   getCustomerHistory
+// );
+
+// router.get(
+//   "/bookings/:bookingId",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   getBookingById
+// );
+
+// router.patch(
+//   "/bookings/:bookingId/cancel",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   cancelBooking
+// );
+
+// // 4. Feedback
+// router.post(
+//   "/feedback",
+//   authenticateUser,
+//   authorizeRoles("Customer"),
+//   submitFeedback
+// );
+
+// router.post('/bookings/summary', authenticateToken, customerController.getBookingSummary);
+// module.exports = router;
 
 const express = require("express");
+const router = express.Router();
 
-const authenticateUser = require("../middleware/authMiddleware");
+// Middleware Imports
+const { authenticateUser } = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
 
+// Controller Imports
 const {
   getProfile,
   getServiceCategories,
-  getServiceProblems,
+  getBookingInitData,
   createBooking,
   getBookingById,
   getCustomerHistory,
   cancelBooking,
-  submitFeedback
+  submitFeedback,
+  getBookingSummary // Added missing import here
 } = require("../controllers/customerController");
-
-const router = express.Router();
 
 // 1. Customer Profile
 router.get(
   "/profile",
   authenticateUser,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("Customer"),
   getProfile
 );
 
 // 2. Service Catalog
 router.get("/services", getServiceCategories);
 
+// Step 1: Init Data for Booking (Profile + Categories + Problems)
 router.get(
-  "/services/:categoryId/problems",
-  getServiceProblems
+  "/booking-init/:categoryId",
+  authenticateUser,
+  authorizeRoles("Customer"),
+  getBookingInitData
 );
 
 // 3. Bookings Lifecycle
 router.post(
+  "/bookings/summary",
+  authenticateUser,
+  authorizeRoles("Customer"),
+  getBookingSummary
+);
+
+router.post(
   "/bookings",
   authenticateUser,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("Customer"),
   createBooking
 );
 
 router.get(
   "/bookings/history",
   authenticateUser,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("Customer"),
   getCustomerHistory
 );
 
 router.get(
   "/bookings/:bookingId",
   authenticateUser,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("Customer"),
   getBookingById
 );
 
 router.patch(
   "/bookings/:bookingId/cancel",
   authenticateUser,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("Customer"),
   cancelBooking
 );
 
@@ -173,7 +332,7 @@ router.patch(
 router.post(
   "/feedback",
   authenticateUser,
-  authorizeRoles("CUSTOMER"),
+  authorizeRoles("Customer"),
   submitFeedback
 );
 

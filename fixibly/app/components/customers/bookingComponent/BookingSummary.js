@@ -1,5 +1,6 @@
-"use client";
 
+//app/components/customers/bookingComponent/BookingSummary.js
+"use client";
 import {
   ClipboardList,
   CalendarDays,
