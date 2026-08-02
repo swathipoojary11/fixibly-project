@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import FilterBar from "../../components/dispatcher-admin/FilterBar";
@@ -16,7 +16,7 @@ const TechnicianAvailability = ({ onBack }) => {
 
   const filtered = useMemo(() => {
     return technicians.filter(t => {
-      const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || String(t.id).includes(search);
       const matchSkill = !filters.skill || t.category === filters.skill;
       const matchAvail = !filters.availability || t.availability === filters.availability;
       return matchSearch && matchSkill && matchAvail;

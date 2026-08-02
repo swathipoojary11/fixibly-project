@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import { FiCheckCircle, FiCircle, FiMapPin, FiClock, FiUser, FiArrowLeft, FiNavigation, FiAlertCircle, FiSend } from "react-icons/fi";
 

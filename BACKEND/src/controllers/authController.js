@@ -1,11 +1,11 @@
-const supabase = require("../../config/supabase");
-const { hashPassword, comparePassword } = require("../../utils/hashPassword");
-const { generateToken } = require("../../utils/jwt");
+const supabase = require("../config/supabase");
+const { hashPassword, comparePassword } = require("../utils/hashPassword");
+const { generateToken } = require("../utils/jwt");
 
 const {
   successResponse,
   errorResponse
-} = require("../../utils/response");
+} = require("../utils/response");
 
 // Register User
 const registerUser = async (req, res) => {
@@ -34,7 +34,7 @@ const registerUser = async (req, res) => {
       .from("users")
       .select("email")
       .ilike("email", cleanEmail)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       return errorResponse(res, 400, "Email already registered.");
@@ -46,7 +46,7 @@ const registerUser = async (req, res) => {
       .from("roles")
       .select("role_id")
       .ilike("role_name", role)
-      .single();
+      .maybeSingle();
 
     if (roleData) {
       roleId = roleData.role_id;
@@ -79,6 +79,7 @@ const registerUser = async (req, res) => {
       .select();
 
     if (error) {
+      console.error("Supabase registration insert error:", error);
       return errorResponse(res, 500, error.message);
     }
 

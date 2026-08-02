@@ -1,7 +1,7 @@
-import { verifyTechnician } from "../middleware/authMiddleware.js";
-import express from "express";
+const express = require("express");
+const { verifyTechnician } = require("../middleware/authMiddleware");
 
-import {
+const {
   profile,
   jobs,
   availability,
@@ -13,30 +13,20 @@ import {
   acceptEmergency,
   notifications,
   notificationRead
-} from "../controllers/technicianController.js";
+} = require("../controllers/technicianController");
 
 const router = express.Router();
 
 router.get("/profile", verifyTechnician, profile);
-
 router.get("/jobs", verifyTechnician, jobs);
-
 router.patch("/availability", verifyTechnician, availability);
-
 router.patch("/location", verifyTechnician, location);
-
 router.patch("/jobs/:id/status", verifyTechnician, jobStatus);
-
 router.patch("/jobs/:id/accept", verifyTechnician, accept);
-
 router.patch("/jobs/:id/reject", verifyTechnician, reject);
-
 router.get("/emergency", verifyTechnician, emergency);
-
 router.patch("/emergency/:id/accept", verifyTechnician, acceptEmergency);
-
 router.get("/notifications", verifyTechnician, notifications);
-
 router.patch("/notifications/:id/read", verifyTechnician, notificationRead);
 
-export default router;
+module.exports = router;

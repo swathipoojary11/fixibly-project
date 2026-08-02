@@ -50,8 +50,8 @@
 
 const express = require("express");
 
-const authenticateUser = require("../middlewares/authMiddleware");
-const authorizeRoles = require("../middlewares/roleMiddleware");
+const authenticateUser = require("../middleware/authMiddleware");
+const authorizeRoles = require("../middleware/roleMiddleware");
 
 const {
     getServiceCategories,

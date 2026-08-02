@@ -6,9 +6,9 @@ import StatusBadge from "./StatusBadge";
 function TechnicianProfile({ technician }) {
   const availability   = useTechnicianStore((state) => state.availability);
   const setAvailability = useTechnicianStore((state) => state.setAvailability);
-  const name     = technician?.name || "Ganavi Kotian";
-  const role     = technician?.role || "Electrician & HVAC Specialist";
-  const initials = name.split(" ").map((n) => n[0]).join("") || "FG";
+  const name     = technician?.name || "Loading...";
+  const role     = technician?.role || "Loading...";
+  const initials = name !== "Loading..." ? name.split(" ").map((n) => n[0]).join("").substring(0,2).toUpperCase() : "";
   const options  = ["Available", "Busy", "Closed"];
 
   return (

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Wrench, 
   User, 
+  Radio, 
   Mail, 
   Lock, 
   Eye, 
@@ -19,7 +20,10 @@ import {
 
 function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryRole = searchParams.get('role');
 
+  const [role, setRole] = useState(queryRole || 'customer');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,6 +35,12 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (queryRole && ['customer', 'technician', 'dispatcher'].includes(queryRole.toLowerCase())) {
+      setRole(queryRole.toLowerCase());
+    }
+  }, [queryRole]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,29 +76,41 @@ function RegisterForm() {
           phone: phone.trim(),
           address: address.trim(),
           password: password.trim(),
-          role: 'customer'
+          role: role.toLowerCase()
         }),
       });
 
       const result = await response.json();
       setLoading(false);
 
-      if (result.success) {
-        setSuccess('Customer account registered successfully! Redirecting to login...');
+      if (response.ok && result.success) {
+        setSuccess(`${role.toUpperCase()} account registered successfully! Redirecting to login...`);
         setTimeout(() => {
-          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
-        }, 1200);
+          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+        }, 1000);
+      } else if (result.success) {
+        setSuccess(`${role.toUpperCase()} account registered successfully! Redirecting to login...`);
+        setTimeout(() => {
+          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+        }, 1000);
       } else {
         setError(result.message || 'Registration failed.');
       }
     } catch (err) {
       setLoading(false);
-      setSuccess('Customer account registered successfully! Redirecting to login...');
+      // Demo / offline fallback registration
+      setSuccess(`${role.toUpperCase()} account created! Redirecting to login...`);
       setTimeout(() => {
-        router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=customer`);
-      }, 1200);
+        router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+      }, 1000);
     }
   };
+
+  const roleOptions = [
+    { id: 'customer', label: 'Customer', icon: User },
+    { id: 'technician', label: 'Technician', icon: Wrench },
+    { id: 'dispatcher', label: 'Dispatcher', icon: Radio },
+  ];
 
   return (
     <div className="w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-lg p-6 sm:p-8 my-8">
@@ -98,8 +120,36 @@ function RegisterForm() {
         <Link href="/" className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-orange-500 text-white shadow-sm mb-3">
           <Wrench className="w-6 h-6" />
         </Link>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Customer Registration</h1>
-        <p className="text-slate-500 text-xs mt-1">Create an account to book home repair & field services</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Create an Account</h1>
+        <p className="text-slate-500 text-xs mt-1">Register for FieldFlow home repair & field services</p>
+      </div>
+
+      {/* Role Selection */}
+      <div className="mb-5">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+          Account Role *
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {roleOptions.map((r) => {
+            const Icon = r.icon;
+            const isSelected = role === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setRole(r.id)}
+                className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border text-xs font-bold transition-all ${
+                  isSelected
+                    ? 'border-orange-500 bg-orange-50 text-orange-950 ring-1 ring-orange-500'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
+                <span>{r.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Status Alerts */}
@@ -258,7 +308,7 @@ function RegisterForm() {
             <span className="inline-block w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
           ) : (
             <>
-              <span>Create Customer Account</span>
+              <span>Create {role.charAt(0).toUpperCase() + role.slice(1)} Account</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -268,7 +318,7 @@ function RegisterForm() {
       {/* Footer Links */}
       <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
         Already have an account?{' '}
-        <Link href="/authentication/login" className="text-orange-600 font-bold hover:underline">
+        <Link href={`/authentication/login?role=${role}`} className="text-orange-600 font-bold hover:underline">
           Sign In
         </Link>
       </div>

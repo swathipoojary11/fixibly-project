@@ -1,5 +1,11 @@
 "use client";
 import AdminApp from "./AdminApp/page";
+import { AdminStoreProvider } from "./AdminStore";
+
 export default function AdminPage() {
-  return <AdminApp />;
+  return (
+    <AdminStoreProvider>
+      <AdminApp />
+    </AdminStoreProvider>
+  );
 }

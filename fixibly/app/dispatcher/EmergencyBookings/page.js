@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import { FiZap, FiX, FiPhone, FiMapPin, FiAlertTriangle, FiRadio, FiCheck, FiArrowLeft, FiArrowDown } from "react-icons/fi";
 import Portal from "../../components/dispatcher-admin/Portal";
@@ -16,17 +16,25 @@ const EmergencyBookings = ({ onBack }) => {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
-  const handleBroadcast = () => {
-    if (!skillFilter) return;
+  const handleBroadcast = async () => {
+    if (!skillFilter || !selected) return;
     setBroadcasting(true);
-    setTimeout(() => {
-      const available = technicians.filter(t => t.availability === "Available" && t.category === skillFilter);
-      if (available.length === 0) { showToast("⚠️ No available technicians with selected skill."); setBroadcasting(false); return; }
-      const assigned = available[0];
-      assignTechnician(selected.id, assigned, true);
-      setSelected(null); setBroadcasting(false); setSkillFilter("");
-      showToast(`🚨 Broadcast sent! ${assigned.name} assigned to ${selected.id}`);
-    }, 2000);
+    try {
+      const res = await fetch("http://localhost:5000/api/v1/dispatcher/emergency/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: selected.id, dispatcherUserId: null })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Broadcast failed");
+      showToast(`🚨 ${data.message}`);
+      setSelected(null);
+      setSkillFilter("");
+    } catch (err) {
+      showToast(`⚠️ ${err.message}`);
+    } finally {
+      setBroadcasting(false);
+    }
   };
 
   const handleQualify = () => {
