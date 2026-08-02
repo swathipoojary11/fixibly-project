@@ -1,36 +1,37 @@
 const supabase = require('../config/supabase');
 
-// Fetch service categories for dashboard
+// Fetch active service categories
 const getAllActiveCategories = async () => {
   const { data, error } = await supabase
     .from('service_categories')
-    .select('category_id, category_name, category_image_url, is_active, created_at')
+    .select('*')
     .eq('is_active', true)
-    .order('category_name', { ascending: true });
+    .order('category_id', { ascending: true });
 
   if (error) {
     console.error('Supabase Error in getAllActiveCategories:', error.message);
     throw error;
   }
-  return data;
+  return data || [];
 };
 
-// Fetch sub-problems (for booking page later)
+// Fetch active problems for a category
 const getProblemsByCategoryId = async (categoryId) => {
   const { data, error } = await supabase
     .from('service_problems')
-    .select('problem_id, category_id, problem_name, fixed_price, is_active')
+    .select('*')
     .eq('category_id', categoryId)
     .eq('is_active', true)
-    .order('problem_name', { ascending: true });
+    .order('problem_id', { ascending: true });
 
   if (error) {
     console.error('Supabase Error in getProblemsByCategoryId:', error.message);
     throw error;
   }
-  return data;
+  return data || [];
 };
+
 module.exports = {
   getAllActiveCategories,
   getProblemsByCategoryId
-};
+};
