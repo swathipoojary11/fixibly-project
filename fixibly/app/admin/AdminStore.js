@@ -3,8 +3,24 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 const AdminContext = createContext(null);
 
-const API = "http://localhost:5000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const toBool = (value) => Boolean(value);
+
+const safeFetchJson = async (url, options) => {
+    try {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+            return { success: false, status: res.status };
+        }
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+            return { success: false, message: "Response is not JSON" };
+        }
+        return await res.json();
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+};
 
 export function AdminStoreProvider({ children }) {
     const [liveStats, setLiveStats] = useState(null);
@@ -25,15 +41,15 @@ export function AdminStoreProvider({ children }) {
             setFetchError(null);
             try {
                 const [analyticsRes, overviewRes, notifsRes, reportsRes, usersRes] = await Promise.all([
-                    fetch(`${API}/admin/dashboard-analytics`).then(r => r.json()),
-                    fetch(`${API}/admin/overview`).then(r => r.json()),
-                    fetch(`${API}/notifications?role=ADMIN`).then(r => r.json()),
-                    fetch(`${API}/admin/reports`).then(r => r.json()),
-                    fetch(`${API}/admin/users`).then(r => r.json())
+                    safeFetchJson(`${API}/admin/dashboard-analytics`),
+                    safeFetchJson(`${API}/admin/overview`),
+                    safeFetchJson(`${API}/notifications?role=ADMIN`),
+                    safeFetchJson(`${API}/admin/reports`),
+                    safeFetchJson(`${API}/admin/users`)
                 ]);
 
                 // ── Users ──────────────────────────────────────────────
-                if (usersRes.success) {
+                if (usersRes?.success) {
                     const counts = usersRes.counts || { total: 0, customers: 0, technicians: 0, dispatchers: 0 };
                     setUserCounts({
                         total: Number(counts.total || 0),
@@ -64,7 +80,7 @@ export function AdminStoreProvider({ children }) {
                 }
 
                 // ── Overview (bookings, technicians, audit logs) ───────
-                if (overviewRes.success) {
+                if (overviewRes?.success) {
                     const mapBooking = b => ({
                         id: b.booking_id,
                         customer: b.customers?.full_name || b.customer_name || `Customer ${b.customer_id || ""}`.trim(),
@@ -115,7 +131,7 @@ export function AdminStoreProvider({ children }) {
                 }
 
                 // ── Analytics (KPIs + charts) ──────────────────────────
-                if (analyticsRes.success) {
+                if (analyticsRes?.success) {
                     const km = analyticsRes.keyMetrics || {};
                     const ch = analyticsRes.charts || {};
                     const rp = reportsRes?.reports || {};
@@ -162,7 +178,7 @@ export function AdminStoreProvider({ children }) {
                 }
 
                 // ── Notifications ──────────────────────────────────────
-                if (notifsRes.success) {
+                if (notifsRes?.success) {
                     setAdminNotifs((notifsRes.notifications || []).map(n => ({
                         ...n,
                         id: n.notification_id || n.id,
