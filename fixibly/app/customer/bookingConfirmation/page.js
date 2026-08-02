@@ -1,12 +1,11 @@
+//app/customer/bookingConfirmation/page.js
 import Navbar from "@/app/components/navbar";
 import Footer from "@/app/components/footer";
-
 import BookingSuccessCard from "@/app/components/customers/bookingConfirmation/BookingSuccessCard";
 import BookingDetails from "@/app/components/customers/bookingConfirmation/BookingDetails";
 import TechnicianCard from "@/app/components/customers/bookingConfirmation/TechnicianCard";
 import TrackingTimeline from "@/app/components/customers/bookingConfirmation/TrackingTimeline";
 import ActionButtons from "@/app/components/customers/bookingConfirmation/ActionButton";
-
 export default function BookingConfirmationPage() {
   return (
     <>
