@@ -11,7 +11,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const dispatcherRoutes = require("./routes/dispatcherRoutes");
 const technicianRoutes = require("./routes/technicianRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
-const customerRoutes = require("./routes/customerRoute");
+const customerRoutes = require("./routes/customerRoutes");
 
 const app = express();
 
