@@ -62,7 +62,7 @@ function JobDetails() {
     priority:            matchedJob?.priority || "Standard",
     customer:            matchedJob?.customer_name || matchedJob?.customer || "—",
     phone:               matchedJob?.customer_phone || matchedJob?.phone || "—",
-    address:             matchedJob?.service_address || matchedJob?.address || "—",
+    address:             matchedJob?.service_address || matchedJob?.address || matchedJob?.customer_address || "—",
     scheduledTime:       matchedJob?.schedule_time
                            ? new Date(matchedJob.schedule_time).toLocaleString()
                            : matchedJob?.scheduled_at

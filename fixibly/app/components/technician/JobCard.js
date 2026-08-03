@@ -20,7 +20,7 @@ function JobCard({ job }) {
   const jobId      = job.id || job.booking_id;
   const title      = job.title || job.service_type || "Service Job";
   const customer   = job.customer_name || job.customer || "—";
-  const address    = job.service_address || job.address || "—";
+  const address    = job.service_address || job.address || job.customer_address || "—";
   const status     = job.status || "pending";
   const time       = job.schedule_time
     ? new Date(job.schedule_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
