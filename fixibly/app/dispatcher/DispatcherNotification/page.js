@@ -7,7 +7,7 @@ import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
 
 const TABS = ["All", "Unread", "Read"];
 
-const DispatcherNotifications = ({ onBack }) => {
+const DispatcherNotifications = ({ onBack = () => {} }) => {
   const { dispNotifs, setDispNotifs, markNotifsReadAsync } = useAppStore();
   const [tab, setTab] = useState("All");
 

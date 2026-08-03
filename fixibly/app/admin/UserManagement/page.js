@@ -13,7 +13,7 @@ const TABS = [
     { key: "dispatchers", label: "Dispatchers" },
 ];
 
-const UserManagement = ({ onBack }) => {
+const UserManagement = ({ onBack = () => {} }) => {
     const { customers, technicians, dispatchers, userCounts, loading } = useAdminStore();
     const [activeTab, setActiveTab] = useState("customers");
     const [search, setSearch] = useState("");
@@ -100,10 +100,10 @@ const UserManagement = ({ onBack }) => {
             <div className="ff-card overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                     <p className="ff-section-title capitalize">{activeTab} <span className="text-sm font-normal text-gray-400 ml-1">({filtered.length})</span></p>
-                    <p className="text-xs text-gray-400">Admin can view, enable, or disable accounts</p>
+                    <p className="text-xs text-gray-400">Admin view — read only for customers</p>
                 </div>
                 {filtered.length > 0
-                    ? <UserTable users={filtered} onView={setViewUser} onToggleStatus={handleToggle} />
+                    ? <UserTable users={filtered} onView={setViewUser} onToggleStatus={activeTab !== "customers" ? handleToggle : null} />
                     : <EmptyState icon={FiUsers} title="No users found" />
                 }
             </div>

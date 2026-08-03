@@ -26,6 +26,13 @@ const getNotifications = async (req, res) => {
       query = query.eq('notification_type', notificationType);
     }
 
+    // Role-based filtering for notification types
+    if (role === 'TECHNICIAN') {
+      query = query.in('notification_type', ['Emergency', 'Assignment']);
+    } else if (role === 'CUSTOMER') {
+      query = query.in('notification_type', ['Booking', 'Assignment', 'Cancellation']);
+    }
+
     const { data, error } = await query;
     if (error) throw error;
 

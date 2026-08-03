@@ -14,7 +14,7 @@ const SORT_OPTIONS = [
   { key: "workload", label: "Highest Workload", fn: (a, b) => b.assignedJobs - a.assignedJobs },
 ];
 
-const TechnicianPerformance = ({ onBack }) => {
+const TechnicianPerformance = ({ onBack = () => {} }) => {
   const { technicians, bookings, emergencies } = useAppStore();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});

@@ -61,7 +61,7 @@ const ReassignModal = ({ booking, techs, onAssign, onClose }) => {
   );
 };
 
-const CancelledBookings = ({ onBack }) => {
+const CancelledBookings = ({ onBack = () => {} }) => {
   const { cancelledBookings, technicians, reassignBooking } = useAppStore();
   const [tab, setTab] = useState("Customer");
   const [search, setSearch] = useState("");

@@ -8,7 +8,7 @@ import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiUsers, FiStar, FiClock, FiX, FiPhone, FiMail, FiArrowLeft } from "react-icons/fi";
 import Portal from "../../components/dispatcher-admin/Portal";
 
-const TechnicianAvailability = ({ onBack }) => {
+const TechnicianAvailability = ({ onBack = () => {} }) => {
   const { technicians } = useAppStore();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});

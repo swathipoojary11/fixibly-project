@@ -6,7 +6,7 @@ import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiActivity, FiArrowLeft } from "react-icons/fi";
 
-const ActivityLog = ({ onBack }) => {
+const ActivityLog = ({ onBack = () => {} }) => {
     const { activityLogs = [], loading } = useAdminStore();
     const [search, setSearch] = useState("");
 
