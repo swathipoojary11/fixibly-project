@@ -8,7 +8,7 @@ import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
 const TABS = ["All", "Unread", "Read"];
 const CATEGORIES = ["All", "emergency", "booking", "delay", "cancel", "system"];
 
-const NotificationCenter = ({ onBack }) => {
+const NotificationCenter = ({ onBack = () => {} }) => {
   const { adminNotifs, setAdminNotifs, markNotifsReadAsync } = useAppStore();
   const [tab, setTab] = useState("All");
   const [category, setCategory] = useState("All");

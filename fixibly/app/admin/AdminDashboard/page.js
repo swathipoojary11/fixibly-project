@@ -32,7 +32,7 @@ const colorMap = {
     cyan:   { bg: "bg-cyan-50",   icon: "text-cyan-600",   border: "border-cyan-100"   },
 };
 
-const Dashboard = ({ onNavigate }) => {
+const Dashboard = ({ onNavigate = () => {} }) => {
     const { getLiveStats, userCounts, loading, fetchError } = useAdminStore();
     const { kpi, charts } = getLiveStats();
 
@@ -157,24 +157,8 @@ const Dashboard = ({ onNavigate }) => {
                 </button>
             </div>
 
-            {/* Charts Row 2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="ff-card p-5">
-                    <p className="ff-section-title mb-4">Emergency vs Normal Jobs</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={charts.emergencyVsNormal} barSize={16}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                            <XAxis dataKey="month"    tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <YAxis                    tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend wrapperStyle={{ fontSize: 11 }} />
-                            <Bar dataKey="normal"    name="Normal"    fill="#F97316" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="emergency" name="Emergency" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                <div className="ff-card p-5">
+            {/* Charts Row 2 — Today's Booking Volume only */}
+            <div className="ff-card p-5">
                     <p className="ff-section-title mb-4">Today's Booking Volume</p>
                     <ResponsiveContainer width="100%" height={200}>
                         <LineChart data={charts.dailyBookingVolume}>
@@ -186,7 +170,6 @@ const Dashboard = ({ onNavigate }) => {
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
-            </div>
 
             {/* Technician Workload */}
             <button className="ff-card p-5 w-full text-left cursor-pointer hover:border-orange-200 transition-all" onClick={() => onNavigate("technicians")}>

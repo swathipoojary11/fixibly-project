@@ -48,10 +48,12 @@ const UserTable = ({ users, onView, onToggleStatus }) => (
                 <button onClick={() => onView && onView(u)} className="ff-btn-ghost flex items-center gap-1 text-xs">
                   <FiEye className="w-3.5 h-3.5" /> View
                 </button>
-                <button onClick={() => onToggleStatus && onToggleStatus(u)} className={`ff-btn-ghost flex items-center gap-1 text-xs ${u.status === "Active" ? "text-red-400 hover:bg-red-50" : "text-green-500 hover:bg-green-50"}`}>
-                  {u.status === "Active" ? <FiToggleRight className="w-3.5 h-3.5" /> : <FiToggleLeft className="w-3.5 h-3.5" />}
-                  {u.status === "Active" ? "Disable" : "Enable"}
-                </button>
+                {onToggleStatus && (
+                  <button onClick={() => onToggleStatus(u)} className={`ff-btn-ghost flex items-center gap-1 text-xs ${u.status === "Active" ? "text-red-400 hover:bg-red-50" : "text-green-500 hover:bg-green-50"}`}>
+                    {u.status === "Active" ? <FiToggleRight className="w-3.5 h-3.5" /> : <FiToggleLeft className="w-3.5 h-3.5" />}
+                    {u.status === "Active" ? "Disable" : "Enable"}
+                  </button>
+                )}
               </div>
             </td>
           </tr>

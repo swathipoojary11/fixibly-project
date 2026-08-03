@@ -57,15 +57,23 @@ export function DispatcherStoreProvider({ children }) {
                 const mapBooking = b => ({
                     id: b.booking_id || b.id,
                     customer: b.customers?.full_name || b.customer || `Customer ${b.customer_id || ''}`,
+                    customerPhone: b.customers?.phone || '',
+                    customerEmail: b.customers?.email || '',
                     category: b.category_id === 1 ? 'Plumbing' : b.category_id === 2 ? 'Electrical' : b.category_id === 3 ? 'AC Repair' : b.category_id === 5 ? 'Painting' : b.category_id === 6 ? 'Carpentry' : (b.category || 'Maintenance'),
+                    categoryId: b.category_id,
                     status: b.booking_status || b.status,
                     priority: b.priority || 'Normal',
                     emergency: !!b.emergency_flag,
-                    technicianId: b.technician_id,
+                    technicianId: b.technician_id || null,
                     technicianName: b.technicians?.users?.full_name || b.technicianName || null,
+                    technicianPhone: b.technicians?.users?.phone || null,
+                    technicianRating: b.technicians?.rating || null,
+                    technicianCategory: b.technicians?.category_id === 1 ? 'Plumbing' : b.technicians?.category_id === 2 ? 'Electrical' : b.technicians?.category_id === 3 ? 'AC Repair' : null,
                     address: [b.house_number, b.street, b.area, b.city].filter(Boolean).join(', ') || b.address || b.street || '',
+                    city: b.city || '',
+                    pincode: b.pincode || '',
                     createdAt: b.created_at || b.createdAt,
-                    scheduledAt: b.preferred_date || b.scheduled_at || b.created_at || new Date().toISOString(),
+                    scheduledAt: b.preferred_date ? `${b.preferred_date}${b.preferred_time ? 'T' + b.preferred_time : ''}` : (b.created_at || new Date().toISOString()),
                     issue: b.issue_description || b.description || b.issue || '',
                     cancelledBy: b.cancelled_by ? 'Customer' : null,
                     cancelledAt: b.cancelled_at || b.updated_at,
@@ -134,11 +142,12 @@ export function DispatcherStoreProvider({ children }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bookingId, technicianId: tech.id })
             });
-            // Optimistic update
             const updater = b => b.id === bookingId ? { ...b, technicianId: tech.id, technicianName: tech.name, status: "Assigned" } : b;
             if (isEmergency) setEmergencies(prev => prev.map(updater));
             else setBookings(prev => prev.map(updater));
-            addDispNotif({ type: "Technician Assigned", title: "Assigned", description: "Technician API call successful." });
+            // Mark technician as Busy
+            setTechnicians(prev => prev.map(t => t.id === tech.id ? { ...t, availability: "Busy" } : t));
+            addDispNotif({ type: "Technician Assigned", title: "Assigned", description: `${tech.name} assigned to #${bookingId}` });
         } catch (err) {
             console.error(err);
         }
@@ -158,8 +167,15 @@ export function DispatcherStoreProvider({ children }) {
                     dispatcherUserId: null
                 })
             });
-            const updater = b => b.id === cancelledBookingId ? { ...b, technicianId: tech.id, technicianName: tech.name, status: "Assigned" } : b;
-            setCancelledBookings(prev => prev.map(updater));
+            setCancelledBookings(prev => prev.map(b =>
+                b.id === cancelledBookingId
+                    ? { ...b, technicianId: tech.id, technicianName: tech.name, reassignedTo: tech.name, status: "Assigned", needsReassign: false }
+                    : b
+            ));
+            // Also add to active bookings
+            if (target) {
+                setBookings(prev => [{ ...target, technicianId: tech.id, technicianName: tech.name, status: "Assigned", emergency: false }, ...prev]);
+            }
             addDispNotif({ type: "Reassignment", title: "Job Reassigned", description: `Reassigned to ${tech.name}` });
         } catch (err) {
             console.error(err);
@@ -189,6 +205,8 @@ const createBooking = async (booking) => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 customerId: customer?.user_id ?? null,
+                customerName: booking.customer,
+                customerPhone: booking.phone,
                 categoryId: CATEGORY_MAP[booking.category] ?? null,
                 problemId: PROBLEM_MAP[booking.category] ?? null,
                 issueDescription: booking.issue,
@@ -272,19 +290,17 @@ const createBooking = async (booking) => {
             await fetch(`${API}/dispatcher/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ bookingId, status: statusType, role: 'TECHNICIAN' })
+                body: JSON.stringify({ bookingId, status: statusType, userRole: 'TECHNICIAN' })
             });
-            const labelKey = statusType?.toLowerCase();
             const updater = b => b.id === bookingId ? {
                 ...b,
-                status: statusType === 'completed' ? 'Completed' : b.status,
-                lastUpdate: labelKey,
+                status: statusType,
                 lastUpdateTime: new Date().toISOString(),
-                technicianLocation: location
+                technicianLocation: location || b.technicianLocation
             } : b;
             setBookings(prev => prev.map(updater));
             setEmergencies(prev => prev.map(updater));
-            addDispNotif({ type: "Status Update", title: `Status Updated`, description: `Technician transitioned to ${statusType}` });
+            addDispNotif({ type: "Status Update", title: `Status Updated`, description: `Status changed to ${statusType}` });
         } catch (err) {
             console.error(err);
         }

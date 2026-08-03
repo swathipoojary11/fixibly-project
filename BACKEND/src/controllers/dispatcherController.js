@@ -3,6 +3,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { createNotification } = require('../services/notificationService');
 const { logAuditEvent } = require('../services/auditService');
+// const { data, error } = await supabaseAdmin
 
 // 1. Assign Technician (Exchanges Customer & Technician Data + Notifies Admin)
 const assignTechnician = async (req, res) => {
@@ -69,7 +70,7 @@ const assignTechnician = async (req, res) => {
       userId: technician.user_id,
       bookingId,
       title: 'New Job Assigned',
-      description: `New Job #${bookingId}! Customer Name: ${customerInfo?.full_name || 'N/A'}, Phone: ${customerInfo?.phone || 'N/A'}, Address: ${customerAddress}, Issue: ${booking.issue_description}`,
+      description: `You are requested to work for ${customerInfo?.full_name || 'a customer'}`,
       notificationType: 'Assignment',
       priority: 'High'
     });
@@ -222,6 +223,45 @@ const reassignTechnician = async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+};
+// const supabase = require("../config/supabase");
+
+const getDispatcherProfile = async (req, res) => {
+    try {
+        // Support both authenticated (req.user) and unauthenticated (query param) access
+        const userId = req.user?.user_id || req.query?.user_id;
+
+        if (!userId) {
+            return res.status(200).json({
+                success: false,
+                message: "No user_id provided"
+            });
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from("users")
+            .select("user_id, full_name, email, phone, address, role_id")
+            .eq("user_id", userId)
+            .single();
+
+        if (error || !data) {
+            return res.status(404).json({
+                success: false,
+                message: "Dispatcher not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            data
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
 };
 
 // 3. Complete or Cancel Job (Notifies All Lifecycle Parties)
@@ -490,73 +530,114 @@ const createManualBooking = async (req, res) => {
       city,
       state,
       pincode,
+      customerName,
+      customerPhone,
       dispatcherUserId
     } = req.body;
 
-    const { data: booking, error } = await supabaseAdmin
-      .from("bookings")
-      .insert([
-        {
-          customer_id: customerId,
-          category_id: categoryId,
-          problem_id: problemId,
+    // If no customerId, try to find or create a guest record
+    let resolvedCustomerId = customerId || null;
 
-          issue_description: issueDescription,
+    if (!resolvedCustomerId) {
+        // If a phone number is provided, try to find an existing user
+        if (customerPhone) {
+            const { data: existingUser } = await supabaseAdmin
+                .from('users')
+                .select('user_id')
+                .eq('phone', customerPhone)
+                .maybeSingle();
 
-          emergency_flag: emergencyFlag || false,
-          emergency_reason: emergencyReason || null,
-
-          priority: priority || "Normal",
-
-          preferred_date: preferredDate,
-          preferred_time: preferredTime,
-
-          house_number: houseNumber,
-          apartment_name: apartmentName || null,
-
-          street,
-          area,
-          city,
-          state,
-          pincode,
-
-          booking_status: "Pending",
-
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+            if (existingUser) {
+                resolvedCustomerId = existingUser.user_id;
+            }
         }
-      ])
+
+        // If no user is found or no phone is provided, create a new guest user
+        if (!resolvedCustomerId) {
+            // Get the Customer role_id
+            const { data: roleRow } = await supabaseAdmin
+                .from('roles')
+                .select('role_id')
+                .eq('role_name', 'Customer')
+                .maybeSingle();
+
+            // Generate a unique email and a random password hash for the guest user
+            const guestEmail = `guest-${Date.now()}@fixibly.walkin`;
+            const guestPasswordHash = Math.random().toString(36).substring(2);
+
+            const { data: newUser, error: userErr } = await supabaseAdmin
+                .from('users')
+                .insert([{
+                    full_name: customerName || 'Walk-in Customer',
+                    phone: customerPhone || null,
+                    email: guestEmail,
+                    password_hash: guestPasswordHash,
+                    role_id: roleRow?.role_id || null, // Make sure to handle if role not found
+                    created_at: new Date().toISOString()
+                }])
+                .select('user_id')
+                .single();
+
+            if (userErr) {
+                console.error("Error creating guest user:", userErr);
+            } else if (newUser) {
+                resolvedCustomerId = newUser.user_id;
+            }
+        }
+    }
+
+    if (!resolvedCustomerId) {
+        return res.status(400).json({ success: false, error: 'Customer could not be identified or created.' });
+    }
+
+    const { data: booking, error } = await supabaseAdmin
+      .from('bookings')
+      .insert([{
+        customer_id: resolvedCustomerId,
+        category_id: categoryId,
+        problem_id: problemId,
+        issue_description: issueDescription,
+        emergency_flag: emergencyFlag || false,
+        emergency_reason: emergencyReason || null,
+        priority: priority || 'Normal',
+        preferred_date: preferredDate,
+        preferred_time: preferredTime,
+        house_number: houseNumber,
+        apartment_name: apartmentName || null,
+        street,
+        area,
+        city,
+        state,
+        pincode,
+        booking_status: 'Pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
       .select()
       .single();
 
     if (error) throw error;
 
     await createNotification({
-      recipientRole: "DISPATCHER",
+      recipientRole: 'DISPATCHER',
       bookingId: booking.booking_id,
-      title: "New Manual Booking",
+      title: 'New Manual Booking',
       description: `Manual Booking #${booking.booking_id} created.`,
-      notificationType: "Booking",
-      priority: "Medium"
+      notificationType: 'Booking',
+      priority: 'Medium'
     });
 
     await logAuditEvent(
       dispatcherUserId || null,
-      "DISPATCHER",
-      "Manual Booking",
+      'DISPATCHER',
+      'Manual Booking',
       `Created Booking #${booking.booking_id}`
     );
 
-    return res.status(201).json({
-      success: true,
-      booking
-    });
+    return res.status(201).json({ success: true, booking });
 
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message
-    });
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 // 7. Downgrade Emergency Status
@@ -631,6 +712,50 @@ const getTechnicianSummaryStats = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+// 9. Active bookings with technician location (for CurrentStatus polling)
+const getActiveBookingsWithLocation = async (req, res) => {
+  try {
+    const { data: bookings, error: bErr } = await supabaseAdmin
+      .from('bookings')
+      .select('booking_id, booking_status, customer_id, technician_id, issue_description, category_id, preferred_date, preferred_time, house_number, street, area, city, pincode, customers:users!fk_booking_customer(full_name, phone), technicians(technician_id, users(full_name, phone))')
+      .not('booking_status', 'in', '("Completed", "Cancelled")');
+
+    if (bErr) throw bErr;
+
+    const techIds = [...new Set((bookings || []).map(b => b.technician_id).filter(Boolean))];
+
+    let locationMap = {};
+    if (techIds.length > 0) {
+      const { data: locations } = await supabaseAdmin
+        .from('technician_locations')
+        .select('technician_id, latitude, longitude, updated_at')
+        .in('technician_id', techIds);
+      (locations || []).forEach(l => { locationMap[l.technician_id] = l; });
+    }
+
+    const result = (bookings || []).map(b => ({
+      bookingId: b.booking_id,
+      status: b.booking_status,
+      customerName: b.customers?.full_name || null,
+      customerPhone: b.customers?.phone || null,
+      technicianId: b.technician_id,
+      technicianName: b.technicians?.users?.full_name || null,
+      technicianPhone: b.technicians?.users?.phone || null,
+      issue: b.issue_description || null,
+      address: [b.house_number, b.street, b.area, b.city].filter(Boolean).join(', '),
+      location: locationMap[b.technician_id] ? {
+        lat: locationMap[b.technician_id].latitude,
+        lng: locationMap[b.technician_id].longitude,
+        updatedAt: locationMap[b.technician_id].updated_at
+      } : null
+    }));
+
+    return res.status(200).json({ success: true, bookings: result });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   assignTechnician,
   reassignTechnician,
@@ -641,5 +766,7 @@ module.exports = {
   triggerEmergencyBroadcast,
   searchCustomers,
   searchCustomerByPhone,
-  createManualBooking
+  createManualBooking,
+  getDispatcherProfile,
+  getActiveBookingsWithLocation
 };

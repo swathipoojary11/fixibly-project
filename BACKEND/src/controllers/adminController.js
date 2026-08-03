@@ -45,8 +45,8 @@ const getAdminDashboardOverview = async (req, res) => {
       { data: notifications, error: nErr },
       { data: allUsers, error: uErr }
     ] = await Promise.all([
-      supabaseAdmin.from('bookings').select('*').order('created_at', { ascending: false }),
-      supabaseAdmin.from('technicians').select('*').order('technician_id', { ascending: true }),
+      supabaseAdmin.from('bookings').select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(rating, category_id, users(full_name, phone))').order('created_at', { ascending: false }),
+      supabaseAdmin.from('technicians').select('*, users(full_name, phone, email)').order('technician_id', { ascending: true }),
       supabaseAdmin.from('system_audit_logs').select('*').order('created_at', { ascending: false }).limit(100),
       supabaseAdmin.from('notifications').select('*').order('created_at', { ascending: false }).limit(50),
       supabaseAdmin.from('users').select('user_id, full_name, email, phone, created_at, roles(role_name)')
@@ -185,7 +185,7 @@ const getAdminDashboardAnalytics = async (req, res) => {
 
     const [{ data: bookings, error: bErr }, { data: technicians, error: tErr }, { data: payments, error: pErr }] = await Promise.all([
       supabaseAdmin.from('bookings').select('*'),
-      supabaseAdmin.from('technicians').select('*'),
+      supabaseAdmin.from('technicians').select('*, users(full_name)'),
       supabaseAdmin.from('payments').select('*')
     ]);
 
@@ -349,7 +349,9 @@ const getAdminDashboardAnalytics = async (req, res) => {
 const getAdminUsers = async (req, res) => {
   try {
     const [{ data: allUsers, error: uErr }, { data: technicians, error: tErr }] = await Promise.all([
-      supabaseAdmin.from('users').select('user_id, full_name, email, phone, created_at, roles(role_name)'),
+      supabaseAdmin.from('users').select('user_id, full_name, email, phone, created_at, role_id, roles(role_name)')
+        .order('role_id', { ascending: true })
+        .order('full_name', { ascending: true }),
       supabaseAdmin.from('technicians').select('technician_id, user_id, category_id, experience, rating, availability_status')
     ]);
     if (uErr) throw uErr;
@@ -362,7 +364,7 @@ const getAdminUsers = async (req, res) => {
 
     const customers = safeUsers.filter(u => normalizeRoleName(u.roles?.role_name || u.role_name || u.role) === 'Customer').map(u => ({ ...u, id: u.user_id, role: 'Customer' }));
     const dispatchers = safeUsers.filter(u => normalizeRoleName(u.roles?.role_name || u.role_name || u.role) === 'Dispatcher').map(u => ({ ...u, id: u.user_id, role: 'Dispatcher' }));
-    const techUsers = safeUsers.filter(u => normalizeRoleName(u.roles?.role_name || u.role_name || u.role) === 'Technician' || techMap[u.user_id]).map(u => ({
+    const techUsers = safeUsers.filter(u => normalizeRoleName(u.roles?.role_name || u.role_name || u.role) === 'Technician').map(u => ({
       ...u,
       id: u.user_id,
       role: 'Technician',

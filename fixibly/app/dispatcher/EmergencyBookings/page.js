@@ -5,7 +5,7 @@ import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import { FiZap, FiX, FiPhone, FiMapPin, FiAlertTriangle, FiRadio, FiCheck, FiArrowLeft, FiArrowDown } from "react-icons/fi";
 import Portal from "../../components/dispatcher-admin/Portal";
 
-const EmergencyBookings = ({ onBack }) => {
+const EmergencyBookings = ({ onBack = () => {} }) => {
   const { emergencies, technicians, assignTechnician, qualifyToNormal } = useAppStore();
   const [selected, setSelected] = useState(null);
   const [skillFilter, setSkillFilter] = useState("");

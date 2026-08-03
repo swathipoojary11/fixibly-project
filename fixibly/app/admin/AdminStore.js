@@ -84,6 +84,7 @@ export function AdminStoreProvider({ children }) {
                     const mapBooking = b => ({
                         id: b.booking_id,
                         customer: b.customers?.full_name || b.customer_name || `Customer ${b.customer_id || ""}`.trim(),
+                        phone: b.customers?.phone || "",
                         category: b.category_id === 1 ? "Plumbing" : b.category_id === 2 ? "Electrical" : b.category_id === 3 ? "AC Repair" : b.category_id === 5 ? "Painting" : b.category_id === 6 ? "Carpentry" : (b.category || "General"),
                         status: b.booking_status || "Pending",
                         priority: b.priority || "Normal",

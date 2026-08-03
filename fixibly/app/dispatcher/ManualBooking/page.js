@@ -13,7 +13,20 @@ const INITIAL = {
 
 const CATEGORIES = ["Electrician", "Plumber", "AC Repair", "Carpenter", "Painter"];
 
-const ManualBooking = ({ onBack }) => {
+// Defined OUTSIDE component so React doesn't remount on every render
+const Field = ({ label, error, children }) => (
+    <div>
+        <label className="ff-label block text-xs font-semibold text-gray-600 mb-1">{label}</label>
+        {children}
+        {error && (
+            <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                <FiAlertTriangle className="w-3 h-3" />{error}
+            </p>
+        )}
+    </div>
+);
+
+const ManualBooking = ({ onBack = () => {} }) => {
     const { createBooking } = useDispatcherStore();
     const [form, setForm] = useState(INITIAL);
     const [errors, setErrors] = useState({});
@@ -95,18 +108,6 @@ const ManualBooking = ({ onBack }) => {
                     Create Another Booking
                 </button>
             </div>
-        </div>
-    );
-
-    const Field = ({ label, fieldKey, error, children }) => (
-        <div>
-            <label className="ff-label block text-xs font-semibold text-gray-600 mb-1">{label}</label>
-            {children}
-            {error && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                    <FiAlertTriangle className="w-3 h-3" />{error}
-                </p>
-            )}
         </div>
     );
 

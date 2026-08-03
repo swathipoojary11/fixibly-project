@@ -22,7 +22,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     );
 };
 
-const RevenueOverview = ({ onBack }) => {
+const RevenueOverview = ({ onBack = () => {} }) => {
     const { getLiveStats, loading, fetchError } = useAdminStore();
     const { kpi, charts } = getLiveStats();
 

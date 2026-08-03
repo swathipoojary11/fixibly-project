@@ -10,7 +10,7 @@ const TABS = [
   { key: "monthly", label: "Monthly Report", icon: FiBarChart2, color: "purple" },
 ];
 
-const Reports = ({ onBack }) => {
+const Reports = ({ onBack = () => {} }) => {
   const { reports = {} } = useAppStore();
   const [active, setActive] = useState(null);
 

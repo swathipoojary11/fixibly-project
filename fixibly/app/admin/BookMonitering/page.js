@@ -10,7 +10,7 @@ import { FiCalendar, FiX, FiUser, FiMapPin, FiPhone, FiTag, FiClock, FiArrowLeft
 
 const STATUS_TABS = ["All", "Pending", "Assigned", "On The Way", "In Progress", "Completed", "Cancelled", "Delayed"];
 
-const BookingMonitoring = ({ onBack }) => {
+const BookingMonitoring = ({ onBack = () => {} }) => {
   const { bookings, emergencies } = useAppStore();
   const allBookings = useMemo(() => [...bookings, ...emergencies], [bookings, emergencies]);
 
