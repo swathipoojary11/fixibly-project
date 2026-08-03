@@ -7,17 +7,38 @@ import * as technicianService from "../services/technicianService.js";
 export const profile = async (req, res) => {
     try {
         const data = await technicianService.getProfile(req.user.user_id);
-
-        res.json({
-            success: true,
-            data
-        });
-
+        res.json({ success: true, data });
     } catch (err) {
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// ======================================================
+// SERVICE CATEGORIES
+// ======================================================
+
+export const serviceCategories = async (req, res) => {
+    try {
+        const data = await technicianService.getServiceCategories();
+        res.json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// ======================================================
+// UPDATE SERVICE CATEGORY
+// ======================================================
+
+export const updateCategory = async (req, res) => {
+    try {
+        const data = await technicianService.updateServiceCategory(
+            req.user.technician_id,
+            req.body.category_id
+        );
+        res.json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 

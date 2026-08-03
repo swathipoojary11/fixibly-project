@@ -23,16 +23,21 @@ function HeroSection({ technician }) {
 
   return (
     <section className="relative overflow-hidden pt-8 pb-24 bg-slate-950">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,76,15,0.18),_transparent_35%),radial-gradient(circle_at_bottom_left,_rgba(56,189,248,0.16),_transparent_30%)] pointer-events-none" />
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: "url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR5P5zsgIIjtvqkprbCOWSXKx4R6qvR0JealBaBl_nN1w&s=10')" }}
+      />
+      <div className="absolute inset-0 bg-slate-950/70" />
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div className="min-h-[420px] lg:min-h-[460px] bg-slate-950 text-white rounded-[28px] p-8 sm:p-10 lg:p-14 shadow-2xl shadow-slate-950/30 relative overflow-hidden border border-slate-800">
-          <div className="absolute -right-16 -top-16 w-80 h-80 bg-slate-800 rounded-full blur-3xl opacity-80 pointer-events-none" />
+        <div className="min-h-[420px] lg:min-h-[460px] text-white rounded-[28px] p-8 sm:p-10 lg:p-14 relative overflow-hidden border border-slate-800/60">
+          <div className="absolute -right-16 -top-16 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl opacity-60 pointer-events-none" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative z-10">
             <div className="space-y-6">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-orange-400">Welcome back</p>
                 <h1 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-                  {name !== "Technician" ? `Hello, ${name.split(" ")[0]}` : "Technician Dashboard"}
+                  {name && name !== "Technician" ? `Hello, ${name.split(" ")[0]}` : "Welcome back"}
                 </h1>
                 <p className="mt-4 max-w-xl text-slate-300 text-sm leading-relaxed">
                   Manage daily field dispatch, track active job progress, and respond to urgent service requests from a single view.
