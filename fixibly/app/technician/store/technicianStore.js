@@ -43,7 +43,14 @@ const normalizeProfile = (profile) => ({
   email: profile?.user?.email || profile?.email || "—",
   phone: profile?.user?.phone || profile?.phone || "—",
   address: profile?.user?.address || profile?.address || "—",
-  service_category: profile?.category?.category_name || profile?.service_category || profile?.role || "Field Technician",
+  // Read category name from all possible shapes the backend may return
+  service_category:
+    profile?.category?.category_name ||
+    profile?.service_category ||
+    profile?.category_name ||
+    profile?.specialization ||
+    profile?.role ||
+    "Field Technician",
   experience_years: profile?.experience_years ?? profile?.experience ?? 0,
   rating: profile?.rating ?? 0,
   availability_status: profile?.availability_status || profile?.availability || "Offline",
@@ -126,6 +133,7 @@ const useTechnicianStore = create((set, get) => ({
   unreadCount: 0,
   selectedJob: null,
   availability: "available",
+  serviceCategories: [],
   loading: false,
   error: null,
 
@@ -143,11 +151,12 @@ const useTechnicianStore = create((set, get) => ({
     if (!token) return;
     set({ loading: true, error: null });
     try {
-      const [profile, jobs, emergencyList, notifications] = await Promise.all([
+      const [profile, jobs, emergencyList, notifications, categories] = await Promise.all([
         apiFetch("/technician/profile", token),
         apiFetch("/technician/jobs", token),
         apiFetch("/technician/emergency", token),
         apiFetch("/technician/notifications", token),
+        apiFetch("/technician/categories", token),
       ]);
 
       const normalizedProfile = normalizeProfile(profile);
@@ -181,6 +190,7 @@ const useTechnicianStore = create((set, get) => ({
         notifications: normalizedNotifications,
         unreadCount: normalizedNotifications.filter((notification) => !notification.is_read).length,
         availability: normalizeAvailabilityOption(normalizedProfile?.availability_status || normalizedProfile?.availability || "Available"),
+        serviceCategories: Array.isArray(categories) ? categories : [],
         loading: false,
       });
     } catch (err) {
@@ -221,6 +231,20 @@ const useTechnicianStore = create((set, get) => ({
       }));
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  // ── Update Service Category ──────────────────────────────────────────────
+  updateServiceCategory: async (categoryId) => {
+    const { token } = get();
+    if (!token) return;
+    try {
+      await apiMutate("/technician/category", "PUT", { category_id: categoryId }, token);
+      // Refetch profile so service_category updates everywhere
+      const profile = await apiFetch("/technician/profile", token);
+      set({ technician: normalizeProfile(profile) });
+    } catch (err) {
+      console.error("Failed to update service category", err);
     }
   },
 

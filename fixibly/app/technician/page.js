@@ -5,6 +5,7 @@ import DashboardHeader from "../components/technician/DashboardHeader";
 import HeroSection from "../components/technician/HeroSection";
 import AssignedJobs from "../components/technician/AssignedJobs";
 import EmergencyCard from "../components/technician/EmergencyCard";
+import TechnicianProfile from "../components/technician/TechnicianProfile";
 import PerformanceCard from "../components/technician/PerformanceCard";
 import Timeline from "../components/technician/Timeline";
 import StatsCard from "../components/technician/StatsCard";
@@ -107,6 +108,7 @@ export default function TechnicianDashboard() {
             </div>
 
             <div className="lg:col-span-4 space-y-8">
+              <TechnicianProfile technician={technician} />
               <EmergencyCard emergencyJob={emergencyJob} />
             </div>
           </div>

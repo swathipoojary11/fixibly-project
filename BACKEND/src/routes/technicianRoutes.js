@@ -13,10 +13,18 @@ const {
     acceptEmergency,
     notifications,
     notificationRead,
-    completeJob
+    completeJob,
+    serviceCategories,
+    updateCategory
 } = require("../controllers/technicianController");
 
 const { verifyTechnician } = require("../middleware/verifyTechnician");
+
+// ======================
+// Service Categories
+// ======================
+router.get("/categories", verifyTechnician, serviceCategories);
+router.put("/category", verifyTechnician, updateCategory);
 
 // ======================
 // Profile

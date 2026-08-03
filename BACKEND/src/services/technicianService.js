@@ -312,6 +312,37 @@ const completeJob = async (bookingId) => {
 };
 
 // =========================
+// GET ALL SERVICE CATEGORIES
+// =========================
+const getServiceCategories = async () => {
+    const { data, error } = await supabase
+        .from("service_categories")
+        .select("category_id, category_name")
+        .eq("is_active", true)
+        .order("category_name");
+
+    if (error) throw error;
+
+    return data;
+};
+
+// =========================
+// UPDATE SERVICE CATEGORY
+// =========================
+const updateServiceCategory = async (technicianId, categoryId) => {
+    const { data, error } = await supabase
+        .from("technicians")
+        .update({ category_id: categoryId, updated_at: new Date() })
+        .eq("technician_id", technicianId)
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    return data;
+};
+
+// =========================
 // EXPORTS
 // =========================
 module.exports = {
@@ -326,5 +357,7 @@ module.exports = {
     acceptEmergency,
     getNotifications,
     markNotificationRead,
-    completeJob
+    completeJob,
+    getServiceCategories,
+    updateServiceCategory
 };

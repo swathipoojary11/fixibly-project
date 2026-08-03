@@ -1,19 +1,24 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import useTechnicianStore from "../../technician/store/technicianStore";
 import StatusBadge from "./StatusBadge";
-import { MdMail, MdPhone, MdLocationOn, MdStar } from "react-icons/md";
+import { MdMail, MdPhone, MdLocationOn, MdStar, MdBuild, MdCheck } from "react-icons/md";
 
 function TechnicianProfile({ technician }) {
   const availability        = useTechnicianStore((state) => state.availability);
   const updateAvailability  = useTechnicianStore((state) => state.updateAvailability);
   const assignedJobs        = useTechnicianStore((state) => state.assignedJobs);
+  const serviceCategories   = useTechnicianStore((state) => state.serviceCategories);
+  const updateServiceCategory = useTechnicianStore((state) => state.updateServiceCategory);
+
+  const [categoryUpdating, setCategoryUpdating] = useState(false);
+  const [categorySaved, setCategorySaved]       = useState(false);
 
   const name     = technician?.full_name || technician?.name || "—";
   const email    = technician?.email || "—";
   const phone    = technician?.phone || "—";
   const address  = technician?.address || "—";
-  const category = technician?.service_category || technician?.role || "—";
+  const category = technician?.service_category || "—";
   const rating   = technician?.rating != null ? Number(technician.rating).toFixed(1) : "—";
   const profilePic = technician?.profile_picture || null;
 
@@ -26,8 +31,14 @@ function TechnicianProfile({ technician }) {
     (j) => j.status !== "completed" && j.status !== "cancelled"
   ).length;
 
-  const handleAvailabilityChange = (option) => {
-    updateAvailability(option);
+  const handleCategoryChange = async (e) => {
+    const categoryId = Number(e.target.value);
+    if (!categoryId) return;
+    setCategoryUpdating(true);
+    await updateServiceCategory(categoryId);
+    setCategoryUpdating(false);
+    setCategorySaved(true);
+    setTimeout(() => setCategorySaved(false), 2000);
   };
 
   return (
@@ -85,7 +96,7 @@ function TechnicianProfile({ technician }) {
           {options.map((option) => (
             <button
               key={option}
-              onClick={() => handleAvailabilityChange(option)}
+              onClick={() => updateAvailability(option)}
               className={`border px-3 py-2 text-xs font-bold transition-all capitalize ${
                 availability === option
                   ? "border-[#F54C0F] bg-[#FFF3EE] text-[#F54C0F]"
@@ -97,6 +108,31 @@ function TechnicianProfile({ technician }) {
           ))}
         </div>
       </div>
+
+      {/* Service Type Selector */}
+      {serviceCategories.length > 0 && (
+        <div className="mt-6 border-t border-[#ECECEC] pt-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#7B7B7B]">Service type</p>
+          <div className="mt-3 flex items-center gap-2">
+            <select
+              defaultValue=""
+              onChange={handleCategoryChange}
+              disabled={categoryUpdating}
+              className="flex-1 border border-[#ECECEC] rounded-lg px-3 py-2 text-sm text-[#202020] bg-white focus:outline-none focus:border-[#F54C0F] disabled:opacity-50"
+            >
+              <option value="" disabled>{category}</option>
+              {serviceCategories.map((cat) => (
+                <option key={cat.category_id} value={cat.category_id}>
+                  {cat.category_name}
+                </option>
+              ))}
+            </select>
+            {categorySaved && (
+              <MdCheck className="text-emerald-500 shrink-0" size={20} />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Active Jobs Summary */}
       <div className="mt-5 rounded-[24px] bg-[#F7F7F7] border border-[#ECECEC] p-4 text-left">
