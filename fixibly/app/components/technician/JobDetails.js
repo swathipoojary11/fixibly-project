@@ -1,167 +1,211 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   MdArrowBack, MdBuild, MdLocationOn, MdPhone, MdPerson, MdAccessTime,
   MdCheckCircle, MdGpsFixed, MdReportProblem, MdAssignmentTurnedIn,
   MdCategory, MdCheck, MdNavigation, MdShield, MdHandyman, MdHourglassTop, MdDoneAll,
-  MdCancel,
+  MdRefresh,
 } from "react-icons/md";
 import { FiClock, FiAlertCircle } from "react-icons/fi";
 import useTechnicianStore from "../../technician/store/technicianStore";
 
+// Status workflow mapping: backend status → stepper index
+const STATUS_TO_STEP = {
+  "accepted":    0,
+  "on_the_way":  1,
+  "on the way":  1,
+  "arrived":     2,
+  "working":     3,
+  "completed":   4,
+};
+
+// Each stepper step maps to the backend status to send
+const STEP_STATUS = ["On The Way", "Arrived", "Working", null, "Completed"];
+
 function JobDetails() {
   const { id } = useParams();
-  const router = useRouter();
+  const router  = useRouter();
 
-  const storeJobs  = useTechnicianStore((state) => state.assignedJobs) || [];
-  const cancelJobFn = useTechnicianStore((state) => state.cancelJob);
-  const matchedJob  = storeJobs.find((j) => String(j.id) === String(id));
+  const storeJobs       = useTechnicianStore((state) => state.assignedJobs) || [];
+  const updateJobStatus = useTechnicianStore((state) => state.updateJobStatus);
+  const completeJobFn   = useTechnicianStore((state) => state.completeJob);
+  const updateLocation  = useTechnicianStore((state) => state.updateLocation);
+  const fetchAll        = useTechnicianStore((state) => state.fetchAll);
+  const setToken        = useTechnicianStore((state) => state.setToken);
+  const storeToken      = useTechnicianStore((state) => state.token);
 
-  // customer_approved_completion comes from the API via the store
+  // Ensure token is loaded (in case user refreshed directly to this page)
+  useEffect(() => {
+    if (!storeToken) {
+      const tok = localStorage.getItem("token");
+      if (tok) {
+        useTechnicianStore.setState({ token: tok });
+        fetchAll();
+      }
+    }
+  }, []);
+
+  const matchedJob = storeJobs.find((j) => String(j.id || j.booking_id) === String(id));
   const customerApproved = matchedJob?.customer_approved_completion || false;
 
+  // Derive initial stepper step from job status in store
+  const initialStep = matchedJob?.status
+    ? (STATUS_TO_STEP[matchedJob.status.toLowerCase()] ?? -1)
+    : -1;
+
   const job = {
-    id:   id || "101",
-    jobCode: matchedJob?.job_code ? `#${matchedJob.job_code}` : `#${id || "101"}`,
-    title:            matchedJob?.title           || "HVAC Compressor & Filter Maintenance",
-    category:         matchedJob?.category        || "Cooling & Electrical Systems",
-    priority:         matchedJob?.priority        || "High Priority",
-    customer:         matchedJob?.customer_name   || "Rahul Sharma",
-    phone:            matchedJob?.customer_phone  || "+91 98765 43210",
-    address:          matchedJob?.service_address || "12 MG Road, Opp. City Center, Mangalore, KA 575001",
-    scheduledTime:    matchedJob?.scheduled_at
-                        ? new Date(matchedJob.scheduled_at).toLocaleString()
-                        : "10:30 AM (Today)",
-    problemDescription: matchedJob?.description ||
-      "AC compressor is making an unusual buzzing noise and failing to produce cold air following a power fluctuation. Technician must inspect the electrical terminals, capacitor, and refrigerant pressure levels.",
+    id:                  id || "—",
+    jobCode:             matchedJob?.job_code ? `#${matchedJob.job_code}` : `#${id || "—"}`,
+    title:               matchedJob?.title || matchedJob?.service_type || "Service Job",
+    category:            matchedJob?.category || matchedJob?.service_type || "—",
+    priority:            matchedJob?.priority || "Standard",
+    customer:            matchedJob?.customer_name || matchedJob?.customer || "—",
+    phone:               matchedJob?.customer_phone || matchedJob?.phone || "—",
+    address:             matchedJob?.service_address || matchedJob?.address || "—",
+    scheduledTime:       matchedJob?.schedule_time
+                           ? new Date(matchedJob.schedule_time).toLocaleString()
+                           : matchedJob?.scheduled_at
+                           ? new Date(matchedJob.scheduled_at).toLocaleString()
+                           : "—",
+    problemDescription:  matchedJob?.description || matchedJob?.problem_description || "No description provided.",
   };
 
-  // ── Cancel job modal state ─────────────────────────────────────────────────
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelReason, setCancelReason]       = useState("");
-  const [cancelling, setCancelling]           = useState(false);
+  const [stepperError, setStepperError] = useState("");
+  const [currentStep, setCurrentStep] = useState(initialStep);
+  const [stepLoading, setStepLoading] = useState(false);
+  const [stepError, setStepError]     = useState("");
 
-  const [currentStep, setCurrentStep] = useState(-1);
-  const setAvailability = useTechnicianStore((state) => state.setAvailability);
+  useEffect(() => {
+    setCurrentStep(initialStep);
+  }, [initialStep]);
 
-  const handleCancelJob = async () => {
-    if (cancelReason.trim().length < 5) {
-      alert("Please provide a reason (at least 5 characters).");
-      return;
-    }
-    setCancelling(true);
-    try {
-      await cancelJobFn(parseInt(id), cancelReason.trim());
-      setShowCancelModal(false);
-      router.push("/technician");
-    } catch (err) {
-      alert(err.message || "Failed to cancel job.");
-    } finally {
-      setCancelling(false);
-    }
-  };
-  const [location, setLocation]         = useState(null);
-  const [gpsLoading, setGpsLoading]     = useState(false);
-  const [checklist, setChecklist]       = useState({
+  // ── Checklist state ───────────────────────────────────────────────────────
+  const [checklist, setChecklist] = useState({
     issueVerified: false, safetyInspected: false, toolsPrepared: false,
     customerBriefed: false, qualityTested: false,
   });
 
+  // ── GPS state ─────────────────────────────────────────────────────────────
+  const [location, setLocation]     = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
   const checklistItems = [
-    { id: "issueVerified",   title: "Verify Reported Issue & Symptom",       description: "Inspect AC unit, confirm unusual buzzing noise, and log initial fault indicators." },
-    { id: "safetyInspected", title: "Safety & High-Voltage Circuit Check",    description: "Safely isolate circuit breaker, discharge run capacitor, and inspect wiring terminals." },
-    { id: "toolsPrepared",   title: "Inspect Required Tools & Spare Parts",   description: "Verify digital multimeter, manifold gauges, and replacement capacitor availability." },
-    { id: "customerBriefed", title: "Brief Customer on Diagnostic Findings",  description: "Explain root cause, proposed capacitor replacement, and estimated completion time." },
-    { id: "qualityTested",   title: "Post-Repair Cooling & Load Test",        description: "Operate unit for 10 minutes, verify temperature drop, and measure operating current." },
+    { id: "issueVerified",   title: "Verify Reported Issue & Symptom",       description: "Inspect unit, confirm reported fault, and log initial fault indicators." },
+    { id: "safetyInspected", title: "Safety & High-Voltage Circuit Check",    description: "Safely isolate circuit breaker, discharge capacitors, and inspect wiring terminals." },
+    { id: "toolsPrepared",   title: "Inspect Required Tools & Spare Parts",   description: "Verify tools and replacement parts availability." },
+    { id: "customerBriefed", title: "Brief Customer on Diagnostic Findings",  description: "Explain root cause, proposed fix, and estimated completion time." },
+    { id: "qualityTested",   title: "Post-Repair Quality Test",               description: "Operate unit, verify fix works, and check operating parameters." },
   ];
 
-  const completedCount     = Object.values(checklist).filter(Boolean).length;
-  const totalCount         = checklistItems.length;
+  const completedCount      = Object.values(checklist).filter(Boolean).length;
+  const totalCount          = checklistItems.length;
   const isChecklistComplete = completedCount === totalCount;
 
-  const captureGPSLocation = () => {
+  const captureGPS = (sendToBackend = false) => {
     if (!navigator.geolocation) {
-      setLocation({ latitude: "12.914142", longitude: "74.855956", accuracy: 10, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
+      const fallback = { latitude: "12.914142", longitude: "74.855956", accuracy: 10, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) };
+      setLocation(fallback);
+      if (sendToBackend) updateLocation(fallback.latitude, fallback.longitude);
       return;
     }
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setLocation({ latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6), accuracy: Math.round(pos.coords.accuracy), timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) }); setGpsLoading(false); },
-      ()    => { setLocation({ latitude: "12.914142", longitude: "74.855956", accuracy: 12, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) }); setGpsLoading(false); },
+      (pos) => {
+        const loc = {
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6),
+          accuracy: Math.round(pos.coords.accuracy),
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        };
+        setLocation(loc);
+        if (sendToBackend) updateLocation(loc.latitude, loc.longitude);
+        setGpsLoading(false);
+      },
+      () => {
+        const fallback = { latitude: "12.914142", longitude: "74.855956", accuracy: 12, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) };
+        setLocation(fallback);
+        if (sendToBackend) updateLocation(fallback.latitude, fallback.longitude);
+        setGpsLoading(false);
+      },
       { timeout: 10000, enableHighAccuracy: true }
     );
   };
 
-  const handleNextStep = (targetStep) => {
-    if (targetStep === 1 || targetStep === 0) setAvailability("busy");
-    if (targetStep === 2) captureGPSLocation();
+  const handleNextStep = async (targetStep) => {
+    setStepError("");
+    // Step 1 (Arrived) — capture GPS and send to backend
+    if (targetStep === 1) captureGPS(true);
+    // Step 2 (Start Work) — capture GPS
+    if (targetStep === 2) captureGPS(false);
+    // Step 3 (Checklist done → Complete)
+    if (targetStep === 3 && !isChecklistComplete) {
+      setStepError("Please complete all inspection checklist items first.");
+      return;
+    }
     if (targetStep === 4 && !isChecklistComplete) {
-      alert("Please complete all inspection checklist items before completing the job.");
+      setStepError("Please complete all inspection checklist items first.");
       return;
     }
     if (targetStep === 4 && !customerApproved) {
-      alert("Cannot complete job: waiting for customer approval. The customer must confirm completion first.");
+      setStepError("Cannot complete job — waiting for customer to approve completion.");
       return;
     }
-    setCurrentStep(targetStep);
+
+    setStepLoading(true);
+    try {
+      const statusToSend = STEP_STATUS[targetStep];
+      if (targetStep === 4) {
+        // Final completion
+        await completeJobFn(id);
+      } else if (statusToSend) {
+        await updateJobStatus(id, statusToSend);
+      }
+      setCurrentStep(targetStep);
+    } catch (err) {
+      setStepError(err.message || "Action failed. Please try again.");
+    } finally {
+      setStepLoading(false);
+    }
   };
 
-  const toggleChecklistItem = (itemId) => setChecklist((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
+  const toggleChecklistItem = (itemId) =>
+    setChecklist((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
 
   const stepperSteps = [
-    { title: "On the Way",   label: "En Route" },
-    { title: "Arrived",      label: "At Location" },
-    { title: "Start Work",   label: "Work Initiated" },
-    { title: "Checklist",    label: "Inspection" },
-    { title: "Complete Job", label: "Job Finished" },
+    { title: "On the Way",   label: "En Route to customer" },
+    { title: "Arrived",      label: "At customer location" },
+    { title: "Start Work",   label: "Work initiated" },
+    { title: "Checklist",    label: "Inspection in progress" },
+    { title: "Complete Job", label: "Job finished" },
   ];
+
+  // Not found in store (may not have loaded yet)
+  if (!matchedJob) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] flex flex-col">
+        <div className="bg-white border-b border-[#ECECEC] sticky top-0 z-40 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center">
+            <button onClick={() => router.push("/technician")} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FFF3EE] text-[#F54C0F] font-semibold text-sm hover:bg-[#F54C0F] hover:text-white transition-all group">
+              <MdArrowBack className="text-lg transition-transform group-hover:-translate-x-1" />Back to Dashboard
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-[#7B7B7B]">
+          <MdBuild size={48} className="text-[#ECECEC]" />
+          <p className="text-lg font-semibold">Job #{id} not found</p>
+          <p className="text-sm">This job may not be assigned to you, or data is still loading.</p>
+          <button onClick={() => { fetchAll(); }} className="mt-2 text-sm font-bold text-[#F54C0F] underline flex items-center gap-1">
+            <MdRefresh size={16} />Reload jobs
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F7] text-[#202020] font-sans">
 
-      {/* ── Cancel Job Modal ──────────────────────────────────────────────── */}
-      {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-white rounded-[28px] p-8 w-full max-w-md shadow-2xl">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
-                <MdCancel size={22} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#202020]">Cancel Job</h3>
-                <p className="text-xs text-[#7B7B7B]">This action cannot be undone</p>
-              </div>
-            </div>
-            <p className="text-sm text-[#7B7B7B] mb-4">
-              Please provide a reason for cancelling <span className="font-bold text-[#202020]">{job.title}</span>.
-              The dispatcher will be notified.
-            </p>
-            <textarea
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="e.g. Personal emergency, equipment unavailable…"
-              rows={3}
-              className="w-full border border-[#ECECEC] rounded-2xl p-4 text-sm text-[#202020] resize-none focus:outline-none focus:border-red-400"
-            />
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => { setShowCancelModal(false); setCancelReason(""); }}
-                className="flex-1 border border-[#ECECEC] text-[#7B7B7B] py-3 rounded-2xl font-bold text-sm hover:bg-[#F7F7F7] transition"
-              >
-                Keep Job
-              </button>
-              <button
-                onClick={handleCancelJob}
-                disabled={cancelling || cancelReason.trim().length < 5}
-                className="flex-1 bg-red-500 hover:bg-red-600 disabled:bg-[#ECECEC] disabled:text-[#9A9A9A] text-white py-3 rounded-2xl font-bold text-sm transition"
-              >
-                {cancelling ? "Cancelling…" : "Confirm Cancel"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Top Nav */}
       <div className="bg-white border-b border-[#ECECEC] sticky top-0 z-40 shadow-sm">
@@ -171,17 +215,8 @@ function JobDetails() {
             <span>Back to Dashboard</span>
           </button>
           <div className="flex items-center gap-3">
-            {/* Cancel button — only show for assigned/accepted jobs */}
-            {currentStep <= 0 && (
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-red-500 border border-red-200 bg-red-50 hover:bg-red-500 hover:text-white transition"
-              >
-                <MdCancel size={14} /> Cancel Job
-              </button>
-            )}
             <div className="px-5 py-2 rounded-full border-2 border-[#F54C0F] bg-[#FFF3EE] text-[#F54C0F] font-bold text-sm shadow-sm flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#F54C0F] animate-pulse"></span>
+              <span className="w-2 h-2 rounded-full bg-[#F54C0F] animate-pulse" />
               <span>Job ID: {job.jobCode}</span>
             </div>
             <span className={`hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-wide uppercase ${currentStep === 4 ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : currentStep >= 2 ? "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/20" : "bg-amber-50 text-amber-800 border border-amber-200"}`}>
@@ -194,26 +229,26 @@ function JobDetails() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Hero */}
-        <div className="bg-[#181818] text-white rounded-3xl sm:rounded-[28px] p-7 sm:p-8 mb-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-[#F54C0F]/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="bg-white text-slate-900 rounded-3xl sm:rounded-[28px] p-7 sm:p-8 mb-8 shadow-xl border border-slate-200 relative overflow-hidden">
+          <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
             <div className="flex items-start gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-[#F54C0F] text-white flex items-center justify-center shrink-0 shadow-lg shadow-[#F54C0F]/30"><MdBuild size={32} /></div>
+              <div className="w-16 h-16 rounded-2xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-orange-500/20"><MdBuild size={32} /></div>
               <div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="bg-[#F54C0F]/20 text-[#F54C0F] border border-[#F54C0F]/40 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider">{job.priority}</span>
-                  <span className="bg-[#202020] text-[#9A9A9A] px-3.5 py-1 rounded-full text-xs font-semibold border border-white/10">{job.category}</span>
+                  <span className="bg-orange-100 text-orange-700 border border-orange-200 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider">{job.priority}</span>
+                  <span className="bg-slate-100 text-slate-700 px-3.5 py-1 rounded-full text-xs font-semibold border border-slate-200">{job.category}</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white mt-3 tracking-tight">{job.title}</h1>
-                <p className="text-[#9A9A9A] text-sm mt-1.5 flex items-center gap-2"><FiClock className="text-[#F54C0F]" />Scheduled: <span className="text-white font-medium">{job.scheduledTime}</span></p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-3 tracking-tight">{job.title}</h1>
+                <p className="text-slate-500 text-sm mt-1.5 flex items-center gap-2"><FiClock className="text-orange-500" />Scheduled: <span className="text-slate-900 font-medium">{job.scheduledTime}</span></p>
               </div>
             </div>
-            <div className="flex items-center gap-3 self-start lg:self-center border-t lg:border-t-0 border-white/10 pt-4 lg:pt-0 w-full lg:w-auto justify-between lg:justify-end">
+            <div className="flex items-center gap-3 self-start lg:self-center border-t lg:border-t-0 border-slate-200 pt-4 lg:pt-0 w-full lg:w-auto justify-between lg:justify-end">
               <div className="text-left lg:text-right">
-                <p className="text-xs text-[#9A9A9A] uppercase tracking-wider font-semibold">Workflow Status</p>
-                <p className="text-lg font-bold text-[#F54C0F] mt-0.5">{currentStep >= 0 ? stepperSteps[currentStep].title : "Pending Start"}</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Workflow Status</p>
+                <p className="text-lg font-bold text-orange-500 mt-0.5">{currentStep >= 0 ? stepperSteps[currentStep].title : "Pending Start"}</p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-[#202020] border border-white/10 flex items-center justify-center text-[#F54C0F]"><MdHandyman size={24} /></div>
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-orange-500"><MdHandyman size={24} /></div>
             </div>
           </div>
         </div>
@@ -231,14 +266,14 @@ function JobDetails() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#ECECEC]"><p className="text-xs font-semibold text-[#7B7B7B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><MdPerson className="text-[#F54C0F] text-base" /> Customer Name</p><p className="text-base font-bold text-[#202020]">{job.customer}</p></div>
-                <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#ECECEC]"><p className="text-xs font-semibold text-[#7B7B7B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><MdPhone className="text-[#F54C0F] text-base" /> Contact Number</p><a href={`tel:${job.phone}`} className="text-base font-bold text-[#F54C0F] hover:underline inline-block">{job.phone}</a></div>
+                <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#ECECEC]"><p className="text-xs font-semibold text-[#7B7B7B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><MdPhone className="text-[#F54C0F] text-base" /> Contact Number</p>{job.phone !== "—" ? <a href={`tel:${job.phone}`} className="text-base font-bold text-[#F54C0F] hover:underline inline-block">{job.phone}</a> : <p className="text-base font-bold text-[#202020]">—</p>}</div>
                 <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#ECECEC]"><p className="text-xs font-semibold text-[#7B7B7B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><MdCategory className="text-[#F54C0F] text-base" /> Service Type</p><p className="text-base font-bold text-[#202020]">{job.category}</p></div>
                 <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#ECECEC]"><p className="text-xs font-semibold text-[#7B7B7B] uppercase tracking-wider mb-1 flex items-center gap-1.5"><MdAccessTime className="text-[#F54C0F] text-base" /> Scheduled Slot</p><p className="text-base font-bold text-[#202020]">{job.scheduledTime}</p></div>
               </div>
               <div className="mt-6 p-5 rounded-2xl bg-[#FFF3EE] border border-[#F54C0F]/20">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#F54C0F] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#F54C0F]/20"><MdLocationOn size={26} /></div>
-                  <div><span className="text-xs font-bold text-[#F54C0F] uppercase tracking-wider">Destination Address</span><p className="text-base font-bold text-[#202020] mt-0.5">{job.address}</p><p className="text-xs text-[#7B7B7B] mt-1 flex items-center gap-1"><MdNavigation className="text-[#F54C0F]" /> Customer site location verified</p></div>
+                  <div><span className="text-xs font-bold text-[#F54C0F] uppercase tracking-wider">Destination Address</span><p className="text-base font-bold text-[#202020] mt-0.5">{job.address}</p><p className="text-xs text-[#7B7B7B] mt-1 flex items-center gap-1"><MdNavigation className="text-[#F54C0F]" />Customer site location verified</p></div>
                 </div>
               </div>
             </div>
@@ -260,12 +295,12 @@ function JobDetails() {
                   <div><h2 className="text-xl font-bold text-[#202020]">Field Inspection Checklist</h2><p className="text-xs text-[#7B7B7B]">Mandatory safety and service quality checks</p></div>
                 </div>
                 <div className="inline-flex items-center gap-2 bg-[#FFF3EE] border border-[#F54C0F]/30 px-4 py-2 rounded-full self-start sm:self-auto">
-                  <span className="text-xs font-bold text-[#7B7B7B]">Inspection Progress:</span>
-                  <span className="text-sm font-extrabold text-[#F54C0F]">{completedCount} / {totalCount} Completed</span>
+                  <span className="text-xs font-bold text-[#7B7B7B]">Progress:</span>
+                  <span className="text-sm font-extrabold text-[#F54C0F]">{completedCount} / {totalCount}</span>
                 </div>
               </div>
               <div className="w-full bg-[#ECECEC] h-2.5 rounded-full mb-6 overflow-hidden">
-                <div className="bg-[#F54C0F] h-full rounded-full transition-all duration-300 ease-out" style={{ width: `${(completedCount / totalCount) * 100}%` }}></div>
+                <div className="bg-[#F54C0F] h-full rounded-full transition-all duration-300 ease-out" style={{ width: `${(completedCount / totalCount) * 100}%` }} />
               </div>
               <div className="space-y-4">
                 {checklistItems.map((item, index) => {
@@ -273,7 +308,7 @@ function JobDetails() {
                   return (
                     <div key={item.id} onClick={() => toggleChecklistItem(item.id)} className={`p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex items-start gap-4 ${isChecked ? "bg-[#FFF3EE]/70 border-[#F54C0F]/40 shadow-sm" : "bg-[#F7F7F7] border-[#ECECEC] hover:border-[#F54C0F]/30"}`}>
                       <div className="mt-0.5 shrink-0">
-                        {isChecked ? <div className="w-6 h-6 rounded-lg bg-[#F54C0F] text-white flex items-center justify-center shadow-sm"><MdCheck size={18} /></div> : <div className="w-6 h-6 rounded-lg border-2 border-[#9A9A9A] bg-white flex items-center justify-center hover:border-[#F54C0F]"></div>}
+                        {isChecked ? <div className="w-6 h-6 rounded-lg bg-[#F54C0F] text-white flex items-center justify-center shadow-sm"><MdCheck size={18} /></div> : <div className="w-6 h-6 rounded-lg border-2 border-[#9A9A9A] bg-white flex items-center justify-center hover:border-[#F54C0F]" />}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
@@ -296,6 +331,14 @@ function JobDetails() {
                 <div className="w-10 h-10 rounded-xl bg-[#FFF3EE] text-[#F54C0F] flex items-center justify-center"><MdHandyman size={22} /></div>
                 <div><h2 className="text-xl font-bold text-[#202020]">Workflow Stepper</h2><p className="text-xs text-[#7B7B7B]">Sequential technician execution steps</p></div>
               </div>
+
+              {stepError && (
+                <div className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+                  <FiAlertCircle className="shrink-0" />
+                  {stepError}
+                </div>
+              )}
+
               <div className="relative pl-6 space-y-8 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#ECECEC]">
                 {stepperSteps.map((step, idx) => {
                   const isPendingStart = currentStep < 0 && idx === 0;
@@ -308,7 +351,9 @@ function JobDetails() {
                       </div>
                       <div className="flex-1 ml-3">
                         <div className="flex items-center justify-between">
-                          <h3 className={`text-base font-bold ${isCurrent ? "text-[#F54C0F]" : isPassed ? "text-[#202020]" : "text-[#9A9A9A]"}`}>{isPendingStart ? "Ready to Start" : step.title}</h3>
+                          <h3 className={`text-base font-bold ${isCurrent ? "text-[#F54C0F]" : isPassed ? "text-[#202020]" : "text-[#9A9A9A]"}`}>
+                            {isPendingStart ? "Ready to Start" : step.title}
+                          </h3>
                           <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${isPassed ? "bg-emerald-100 text-emerald-800" : isCurrent ? "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/20" : "bg-gray-100 text-[#9A9A9A]"}`}>
                             {isPassed ? "Completed" : isCurrent ? "Active Step" : "Pending"}
                           </span>
@@ -316,27 +361,50 @@ function JobDetails() {
                         <p className="text-xs text-[#7B7B7B] mt-0.5">{isPendingStart ? "Tap Start to begin the workflow." : step.label}</p>
                         {isCurrent && (
                           <div className="mt-4 pt-2">
-                            {idx === 0 && <button onClick={() => handleNextStep(1)} className="w-full bg-[#F54C0F] hover:bg-[#DB4206] text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2">Start</button>}
-                            {idx === 1 && <button onClick={() => handleNextStep(2)} className="w-full bg-[#F54C0F] hover:bg-[#DB4206] text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2"><MdGpsFixed size={18} />Start Work & Capture GPS</button>}
-                            {idx === 2 && <button onClick={() => handleNextStep(3)} className="w-full bg-[#F54C0F] hover:bg-[#DB4206] text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2">Proceed to Inspection Checklist</button>}
+                            {idx === 0 && (
+                              <button
+                                onClick={() => handleNextStep(1)}
+                                disabled={stepLoading}
+                                className="w-full bg-[#F54C0F] hover:bg-[#DB4206] disabled:opacity-50 text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2"
+                              >
+                                {stepLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                                {stepLoading ? "Updating…" : "Start — On The Way"}
+                              </button>
+                            )}
+                            {idx === 1 && (
+                              <button
+                                onClick={() => handleNextStep(2)}
+                                disabled={stepLoading}
+                                className="w-full bg-[#F54C0F] hover:bg-[#DB4206] disabled:opacity-50 text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2"
+                              >
+                                {stepLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <MdGpsFixed size={18} />}
+                                {stepLoading ? "Updating…" : "Arrived — Capture GPS"}
+                              </button>
+                            )}
+                            {idx === 2 && (
+                              <button
+                                onClick={() => handleNextStep(3)}
+                                disabled={stepLoading}
+                                className="w-full bg-[#F54C0F] hover:bg-[#DB4206] disabled:opacity-50 text-white py-3 px-5 rounded-2xl font-bold text-sm shadow-lg shadow-[#F54C0F]/20 transition-all flex items-center justify-center gap-2"
+                              >
+                                {stepLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                                {stepLoading ? "Updating…" : "Start Work & Checklist"}
+                              </button>
+                            )}
                             {idx === 3 && (
                               <>
-                                {/* Complete button: needs BOTH checklist done AND customer approval */}
                                 <button
                                   onClick={() => handleNextStep(4)}
-                                  disabled={!isChecklistComplete || !customerApproved}
-                                  className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                                    isChecklistComplete && customerApproved
-                                      ? "bg-[#F54C0F] hover:bg-[#DB4206] text-white shadow-lg shadow-[#F54C0F]/20"
-                                      : "bg-[#ECECEC] text-[#9A9A9A] cursor-not-allowed"
-                                  }`}
+                                  disabled={!isChecklistComplete || !customerApproved || stepLoading}
+                                  className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${isChecklistComplete && customerApproved && !stepLoading ? "bg-[#F54C0F] hover:bg-[#DB4206] text-white shadow-lg shadow-[#F54C0F]/20" : "bg-[#ECECEC] text-[#9A9A9A] cursor-not-allowed"}`}
                                 >
-                                  <MdDoneAll size={20} />Complete Job
+                                  {stepLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <MdDoneAll size={20} />}
+                                  {stepLoading ? "Completing…" : "Complete Job"}
                                 </button>
                                 {!isChecklistComplete && (
                                   <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-xl mt-3 flex items-center gap-2">
                                     <FiAlertCircle className="shrink-0 text-amber-600 text-sm" />
-                                    Complete all 5 checklist items first.
+                                    Complete all {totalCount} checklist items first.
                                   </p>
                                 )}
                                 {isChecklistComplete && !customerApproved && (
@@ -361,11 +429,12 @@ function JobDetails() {
                   );
                 })}
               </div>
+
               {/* GPS */}
               <div className="mt-8 pt-6 border-t border-[#ECECEC]">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-xs font-bold text-[#7B7B7B] uppercase tracking-wider flex items-center gap-1.5"><MdGpsFixed className="text-[#F54C0F] text-base" /> Technician GPS Coordinates</h4>
-                  <button onClick={captureGPSLocation} disabled={gpsLoading} className="text-xs font-bold text-[#F54C0F] hover:underline disabled:opacity-50">{gpsLoading ? "Syncing..." : "Re-sync Location"}</button>
+                  <button onClick={() => captureGPS(true)} disabled={gpsLoading} className="text-xs font-bold text-[#F54C0F] hover:underline disabled:opacity-50">{gpsLoading ? "Syncing..." : "Re-sync Location"}</button>
                 </div>
                 {location ? (
                   <div className="p-4 rounded-2xl bg-[#FFF3EE] border border-[#F54C0F]/20 text-xs font-semibold text-[#202020] space-y-2">
@@ -373,12 +442,12 @@ function JobDetails() {
                     <div className="flex justify-between items-center"><span className="text-[#7B7B7B]">Longitude:</span><span className="font-mono text-[#F54C0F] text-sm font-bold">{location.longitude}</span></div>
                     <div className="flex justify-between items-center pt-1 border-t border-[#F54C0F]/10 text-[11px] text-[#7B7B7B]">
                       <span>Captured: {location.timestamp}</span>
-                      <span className="text-emerald-700 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified GPS</span>
+                      <span className="text-emerald-700 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Verified GPS</span>
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 rounded-2xl bg-[#F7F7F7] border border-[#ECECEC] text-xs text-[#7B7B7B] text-center">
-                    {gpsLoading ? "Acquiring GPS location..." : "GPS coordinates will automatically capture upon stepping into 'Start Work'."}
+                    {gpsLoading ? "Acquiring GPS location..." : "GPS coordinates capture automatically upon 'Arrived' step."}
                   </div>
                 )}
               </div>

@@ -1,122 +1,358 @@
-const technicianService = require("../services/technicianService.js");
+import * as technicianService from "../services/technicianService.js";
 
-const profile = (req, res) => {
-    res.json({
-        success: true,
-        data: technicianService.getProfile()
-    });
-};
+// ======================================================
+// PROFILE
+// ======================================================
 
-const jobs = (req, res) => {
-    res.json({
-        success: true,
-        data: technicianService.getJobs()
-    });
-};
+export const profile = async (req, res) => {
+    try {
+        const data = await technicianService.getProfile(req.user.user_id);
 
-const availability = (req, res) => {
-    const { status } = req.body;
-    res.json({
-        success: true,
-        data: technicianService.updateAvailability(status)
-    });
-};
-
-const location = (req, res) => {
-    const { latitude, longitude } = req.body;
-    res.json({
-        success: true,
-        data: technicianService.updateLocation(latitude, longitude)
-    });
-};
-
-const jobStatus = (req, res) => {
-    const job = technicianService.updateJobStatus(
-        req.params.id,
-        req.body.status
-    );
-    if (!job)
-        return res.status(404).json({
-            message: "Job not found"
+        res.json({
+            success: true,
+            data
         });
-    res.json({
-        success: true,
-        data: job
-    });
-};
 
-const accept = (req, res) => {
-    const job = technicianService.acceptJob(req.params.id);
-    if (!job)
-        return res.status(404).json({
-            message: "Job not found"
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message
         });
-    res.json({
-        success: true,
-        data: job
-    });
+    }
 };
 
-const reject = (req, res) => {
-    const job = technicianService.rejectJob(req.params.id);
-    if (!job)
-        return res.status(404).json({
-            message: "Job not found"
+// ======================================================
+// ASSIGNED JOBS
+// ======================================================
+
+const jobs = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.getJobs(
+            req.user.technician_id
+        );
+
+        return res.status(200).json({
+            success: true,
+            data
         });
-    res.json({
-        success: true,
-        data: job
-    });
-};
 
-const emergency = (req, res) => {
-    res.json({
-        success: true,
-        data: technicianService.getEmergencyJobs()
-    });
-};
+    } catch (err) {
 
-const acceptEmergency = (req, res) => {
-    const job = technicianService.acceptEmergency(req.params.id);
-    if (!job)
-        return res.status(404).json({
-            message: "Emergency Job not found"
+        return res.status(500).json({
+            success: false,
+            message: err.message
         });
-    res.json({
-        success: true,
-        data: job
-    });
+
+    }
+
 };
 
-const notifications = (req, res) => {
-    res.json({
-        success: true,
-        data: technicianService.getNotifications()
-    });
-};
+// ======================================================
+// EMERGENCY JOBS
+// ======================================================
 
-const notificationRead = (req, res) => {
-    const notification = technicianService.markNotificationRead(req.params.id);
-    if (!notification)
-        return res.status(404).json({
-            message: "Notification not found"
+const emergency = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.getEmergencyJobs();
+
+        return res.status(200).json({
+            success: true,
+            data
         });
-    res.json({
-        success: true,
-        data: notification
-    });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
 };
 
-module.exports = {
-    profile,
+// ======================================================
+// ACCEPT JOB
+// ======================================================
+
+const accept = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.acceptJob(
+            req.user.technician_id,
+            req.params.id
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Job accepted successfully.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// REJECT JOB
+// ======================================================
+
+const reject = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.rejectJob(
+            req.user.technician_id,
+            req.params.id
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Job rejected successfully.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// UPDATE STATUS
+// ======================================================
+
+const jobStatus = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.updateJobStatus(
+            req.params.id,
+            req.body.status
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Status updated.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// UPDATE AVAILABILITY
+// ======================================================
+
+const availability = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.updateAvailability(
+            req.user.technician_id,
+            req.body.status
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Availability updated successfully.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// UPDATE LOCATION
+// ======================================================
+
+const location = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.updateLocation(
+            req.user.technician_id,
+            req.body.latitude,
+            req.body.longitude
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Location updated successfully.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// ACCEPT EMERGENCY
+// ======================================================
+
+const acceptEmergency = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.acceptEmergency(
+            req.user.technician_id,
+            req.params.id
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Emergency job accepted successfully.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// NOTIFICATIONS
+// ======================================================
+
+const notifications = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.getNotifications(
+            req.user.user_id
+        );
+
+        return res.status(200).json({
+            success: true,
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// MARK NOTIFICATION READ
+// ======================================================
+
+const notificationRead = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.markNotificationRead(
+            req.params.id
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Notification marked as read.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+// ======================================================
+// COMPLETE JOB
+// ======================================================
+
+const completeJob = async (req, res) => {
+
+    try {
+
+        const data = await technicianService.completeJob(
+            req.params.id
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Job completed successfully.",
+            data
+        });
+
+    } catch (err) {
+
+        return res.status(400).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+export {
     jobs,
-    availability,
-    location,
-    jobStatus,
+    emergency,
     accept,
     reject,
-    emergency,
+    jobStatus,
+    availability,
+    location,
     acceptEmergency,
     notifications,
-    notificationRead
+    notificationRead,
+    completeJob
 };
+
