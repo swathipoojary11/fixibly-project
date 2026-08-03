@@ -21,7 +21,8 @@ const normalizeAvailabilityValue = (value) => {
 const normalizeJobStatus = (value) => {
   const normalized = `${value || ""}`.trim().toLowerCase();
   if (!normalized) return "pending";
-  if (["accepted", "assigned", "dispatched"].includes(normalized)) return "accepted";
+  if (["accepted"].includes(normalized)) return "accepted";
+  if (["assigned", "dispatched"].includes(normalized)) return "assigned";
   if (["on_the_way", "on the way", "en route", "en_route"].includes(normalized)) return "on_the_way";
   if (["arrived"].includes(normalized)) return "arrived";
   if (["working", "in progress", "in_progress"].includes(normalized)) return "working";
@@ -53,6 +54,12 @@ const normalizeProfile = (profile) => ({
 const normalizeJob = (job) => {
   const normalizedStatus = normalizeJobStatus(job?.booking_status || job?.status || job?.state);
   const title = job?.title || job?.service_type || job?.category?.category_name || "Service Job";
+  const addressParts = [job?.house_number, job?.street, job?.area, job?.city, job?.pincode]
+    .filter(Boolean)
+    .map(String)
+    .join(", ");
+  const finalAddress = job?.service_address || job?.address || addressParts || job?.customer?.address || job?.customer_address || "—";
+
   return {
     ...job,
     id: job?.booking_id || job?.id,
@@ -60,7 +67,9 @@ const normalizeJob = (job) => {
     title,
     customer_name: job?.customer?.full_name || job?.customer_name || job?.customer || "—",
     customer_phone: job?.customer?.phone || job?.customer_phone || job?.phone || "—",
-    service_address: job?.service_address || job?.address || "—",
+    customer_address: job?.customer?.address || job?.customer_address || "—",
+    service_address: finalAddress,
+    address: finalAddress,
     schedule_time: job?.schedule_time || job?.scheduled_at || job?.created_at || null,
     description: job?.description || job?.problem_description || job?.problem?.problem_name || "No description provided.",
     category: job?.category?.category_name || job?.category || job?.service_type || "—",
