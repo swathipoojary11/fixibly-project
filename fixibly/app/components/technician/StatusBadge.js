@@ -1,32 +1,30 @@
 import React from "react";
 
+const variants = {
+  pending:     "bg-yellow-100 text-yellow-700 border border-yellow-200",
+  assigned:    "bg-blue-100 text-blue-700 border border-blue-200",
+  accepted:    "bg-teal-100 text-teal-700 border border-teal-200",
+  on_the_way:  "bg-cyan-100 text-cyan-700 border border-cyan-200",
+  arrived:     "bg-indigo-100 text-indigo-700 border border-indigo-200",
+  working:     "bg-orange-100 text-orange-700 border border-orange-200",
+  completed:   "bg-green-100 text-green-700 border border-green-200",
+  cancelled:   "bg-gray-100 text-gray-500 border border-gray-200",
+  available:   "bg-green-100 text-green-700 border border-green-200",
+  busy:        "bg-orange-100 text-orange-700 border border-orange-200",
+  offline:     "bg-gray-100 text-gray-500 border border-gray-200",
+};
+
+const labels = {
+  on_the_way: "On The Way",
+};
+
 function StatusBadge({ status }) {
-  const normalizedStatus = `${status || ""}`.trim();
-  const label = normalizedStatus
-    ? normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1).replace(/_/g, " ")
-    : "Pending";
-
-  const badgeStyles = {
-    Scheduled: "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/30",
-    "In Progress": "bg-[#F54C0F] text-white shadow-sm shadow-[#F54C0F]/30",
-    Completed: "bg-emerald-100 text-emerald-800 border border-emerald-200",
-    Available: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-    Busy: "bg-amber-100 text-amber-800 border border-amber-200",
-    Started: "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/30",
-    "On the Way": "bg-[#F54C0F] text-white shadow-sm shadow-[#F54C0F]/30",
-    Closed: "bg-[#F7F7F7] text-[#7B7B7B] border border-[#ECECEC]",
-    Offline: "bg-[#F7F7F7] text-[#7B7B7B] border border-[#ECECEC]",
-    Pending: "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/30",
-    Accepted: "bg-emerald-100 text-emerald-800 border border-emerald-200",
-    Arrived: "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/30",
-    Working: "bg-[#F54C0F] text-white shadow-sm shadow-[#F54C0F]/30",
-    Cancelled: "bg-[#F7F7F7] text-[#7B7B7B] border border-[#ECECEC]",
-  };
-
-  const styleClass = badgeStyles[label] || badgeStyles[normalizedStatus] || "bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/30";
+  const key = `${status || ""}`.trim().toLowerCase().replace(/\s+/g, "_");
+  const cls = variants[key] || "bg-gray-100 text-gray-600 border border-gray-200";
+  const label = labels[key] || (status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ") : "Pending");
 
   return (
-    <span className={`inline-flex items-center px-3.5 py-1 rounded-none text-xs font-bold tracking-wide uppercase ${styleClass}`}>
+    <span className={`inline-flex items-center font-semibold rounded-full text-xs px-2.5 py-1 whitespace-nowrap ${cls}`}>
       {label}
     </span>
   );
