@@ -9,6 +9,7 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { useAdminStore } from "../AdminStore";
+import Footer from "../../components/dispatcher-admin/footer"
 
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
@@ -55,7 +56,6 @@ const Dashboard = ({ onNavigate = () => {} }) => {
         { icon: FiUsers,       label: "Total Customers",      value: userCounts.customers,    color: "cyan",   nav: "users"        },
         { icon: FiTool,        label: "Total Technicians",    value: userCounts.technicians,  color: "orange", nav: "technicians"  },
         { icon: FiCheckCircle, label: "Dispatchers",          value: userCounts.dispatchers,  color: "purple", nav: "users"        },
-        { icon: FiCalendar,    label: "Today's Bookings",     value: kpi.totalBookingsToday,  color: "orange", nav: "bookings"     },
         { icon: FiClock,       label: "Pending Bookings",     value: kpi.pendingBookings,     color: "yellow", nav: "bookings"     },
         { icon: FiCheckCircle, label: "Completed Bookings",   value: kpi.completedJobs,       color: "green",  nav: "bookings"     },
         { icon: FiDollarSign,  label: "Revenue Today",        value: `₹${(kpi.expectedRevenueToday || 0).toLocaleString()}`, color: "green", nav: "revenue" },
@@ -157,20 +157,6 @@ const Dashboard = ({ onNavigate = () => {} }) => {
                 </button>
             </div>
 
-            {/* Charts Row 2 — Today's Booking Volume only */}
-            <div className="ff-card p-5">
-                    <p className="ff-section-title mb-4">Today's Booking Volume</p>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={charts.dailyBookingVolume}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                            <XAxis dataKey="hour"     tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} interval={2} />
-                            <YAxis                    tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Line type="monotone" dataKey="bookings" name="Bookings" stroke="#F97316" strokeWidth={2.5} dot={{ fill: "#F97316", r: 3 }} activeDot={{ r: 5 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-
             {/* Technician Workload */}
             <button className="ff-card p-5 w-full text-left cursor-pointer hover:border-orange-200 transition-all" onClick={() => onNavigate("technicians")}>
                 <p className="ff-section-title mb-4">Technician Workload <span className="text-xs font-normal text-gray-400 ml-1">(click to view details)</span></p>
@@ -186,6 +172,7 @@ const Dashboard = ({ onNavigate = () => {} }) => {
                     </BarChart>
                 </ResponsiveContainer>
             </button>
+            <Footer></Footer>
         </div>
     );
 };

@@ -57,6 +57,7 @@ export function DispatcherStoreProvider({ children }) {
                 const mapBooking = b => ({
                     id: b.booking_id || b.id,
                     customer: b.customers?.full_name || b.customer || `Customer ${b.customer_id || ''}`,
+                    phone: b.customers?.phone || '',
                     customerPhone: b.customers?.phone || '',
                     customerEmail: b.customers?.email || '',
                     category: b.category_id === 1 ? 'Plumbing' : b.category_id === 2 ? 'Electrical' : b.category_id === 3 ? 'AC Repair' : b.category_id === 5 ? 'Painting' : b.category_id === 6 ? 'Carpentry' : (b.category || 'Maintenance'),
@@ -75,7 +76,7 @@ export function DispatcherStoreProvider({ children }) {
                     createdAt: b.created_at || b.createdAt,
                     scheduledAt: b.preferred_date ? `${b.preferred_date}${b.preferred_time ? 'T' + b.preferred_time : ''}` : (b.created_at || new Date().toISOString()),
                     issue: b.issue_description || b.description || b.issue || '',
-                    cancelledBy: b.cancelled_by ? 'Customer' : null,
+                    cancelledBy: b.cancelled_by_role === 'TECHNICIAN' ? 'Technician' : b.cancelled_by_role === 'CUSTOMER' ? 'Customer' : (b.cancelled_by && b.technician_id) ? 'Technician' : b.cancelled_by ? 'Customer' : null,
                     cancelledAt: b.cancelled_at || b.updated_at,
                     reason: b.cancellation_reason || 'No reason provided',
                     needsReassign: b.booking_status === 'Cancelled' && !!b.technician_id
@@ -84,7 +85,28 @@ export function DispatcherStoreProvider({ children }) {
                 if (statsRes?.success) {
                     const rawBookings = (statsRes.bookings || []).map(mapBooking);
                     const rawEmergencies = (statsRes.emergencies || []).map(mapBooking);
-                    const rawTechs = (statsRes.technicians || []).map(mapTech);
+                    const allBookingsRaw = [...(statsRes.bookings || []), ...(statsRes.emergencies || [])];
+
+                    const mapTechWithStats = t => {
+                        const techId = t.technician_id || t.id;
+                        const techBookings = allBookingsRaw.filter(b => b.technician_id === techId);
+                        const completedJobs = techBookings.filter(b => b.booking_status === 'Completed').length;
+                        const delayedJobs = techBookings.filter(b => b.booking_status === 'Delayed').length;
+                        return {
+                            id: techId,
+                            name: t.users?.full_name || t.name || `Tech ${techId}`,
+                            phone: t.users?.phone || t.phone || '',
+                            email: t.users?.email || '',
+                            category: t.category_id === 1 ? 'Plumbing' : t.category_id === 2 ? 'Electrical' : t.category_id === 3 ? 'AC Repair' : t.category_id === 5 ? 'Painting' : t.category_id === 6 ? 'Carpentry' : 'Maintenance',
+                            availability: t.availability_status || 'Available',
+                            avgRating: Number(t.rating || 4.5),
+                            completedJobs,
+                            delayedJobs,
+                            currentBooking: null
+                        };
+                    };
+
+                    const rawTechs = (statsRes.technicians || []).map(mapTechWithStats);
 
                     // Attach current active booking to each busy technician
                     const allActive = [...rawBookings, ...rawEmergencies].filter(b =>

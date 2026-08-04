@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  FiGrid, FiCalendar, FiUsers, FiFileText,
+  FiGrid, FiCalendar, FiUsers,
   FiBell, FiMenu, FiX,
 } from "react-icons/fi";
 import Dashboard from "../AdminDashboard/page";
 import BookingMonitoring from "../BookMonitering/page";
 import TechnicianPerformance from "../TechnicianPerformance/page";
-import Reports from "../Reports/page";
 import NotificationCenter from "../NotificationCenter/page";
 import UserManagement from "../UserManagement/page";
 import { useAdminStore as useAppStore } from "../AdminStore";
@@ -20,7 +19,6 @@ const navItems = [
   { key: "dashboard",     label: "Dashboard",     icon: FiGrid },
   { key: "bookings",      label: "Bookings",      icon: FiCalendar },
   { key: "technicians",   label: "Technicians",   icon: FiUsers },
-  { key: "reports",       label: "Reports",       icon: FiFileText },
   { key: "notifications", label: "Notifications", icon: FiBell },
   { key: "users",         label: "User Mgmt",     icon: FiUsers },
 ];
@@ -57,7 +55,6 @@ const AdminApp = () => {
       case "dashboard":     return <Dashboard onBack={goBack} onNavigate={setActivePage} />;
       case "bookings":      return <BookingMonitoring onBack={goBack} />;
       case "technicians":   return <TechnicianPerformance onBack={goBack} />;
-      case "reports":       return <Reports onBack={goBack} />;
       case "notifications": return <NotificationCenter onBack={goBack} />;
       case "users":         return <UserManagement onBack={goBack} />;
       default:              return <Dashboard onBack={goBack} onNavigate={setActivePage} />;

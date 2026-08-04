@@ -97,27 +97,36 @@ export function AdminStoreProvider({ children }) {
                         issue: b.issue_description || ""
                     });
 
-                    const allBookings = (overviewRes.bookings || []).map(mapBooking);
-                    setBookings(allBookings.filter(b => !b.emergency));
-                    setEmergencies(allBookings.filter(b => b.emergency));
+                    const rawBookings = overviewRes.bookings || [];
+                    const allMapped = rawBookings.map(mapBooking);
+                    setBookings(allMapped.filter(b => !b.emergency));
+                    setEmergencies(allMapped.filter(b => b.emergency));
 
-                    setTechnicians((overviewRes.technicians || []).map(t => ({
-                        id: t.technician_id,
-                        name: t.users?.full_name || `Tech ${t.technician_id}`,
-                        email: t.users?.email || "",
-                        phone: t.users?.phone || "",
-                        availability: t.availability_status || "Available",
-                        category: t.category_id === 1 ? "Plumbing" : t.category_id === 2 ? "Electrical" : t.category_id === 3 ? "AC Repair" : t.category_id === 5 ? "Painting" : t.category_id === 6 ? "Carpentry" : "General",
-                        avgRating: Number(t.rating) || 0,
-                        completionRate: 0,
-                        assignedJobs: 0,
-                        completedJobs: 0,
-                        delayedJobs: 0,
-                        joinedDate: t.users?.created_at || new Date().toISOString(),
-                        verified: true,
-                        status: "Active",
-                        role: "Technician"
-                    })));
+                    setTechnicians((overviewRes.technicians || []).map(t => {
+                        const techId = t.technician_id;
+                        const mine = rawBookings.filter(b => b.technician_id === techId);
+                        const completedJobs = mine.filter(b => b.booking_status === 'Completed').length;
+                        const assignedJobs  = mine.filter(b => b.booking_status !== 'Pending' && b.booking_status !== 'Cancelled').length;
+                        const delayedJobs   = mine.filter(b => b.booking_status === 'Delayed').length;
+                        const total = mine.length;
+                        return {
+                            id: techId,
+                            name: t.users?.full_name || `Tech ${techId}`,
+                            email: t.users?.email || "",
+                            phone: t.users?.phone || "",
+                            availability: t.availability_status || "Available",
+                            category: t.category_id === 1 ? "Plumbing" : t.category_id === 2 ? "Electrical" : t.category_id === 3 ? "AC Repair" : t.category_id === 5 ? "Painting" : t.category_id === 6 ? "Carpentry" : "General",
+                            avgRating: Number(t.rating) || 0,
+                            completionRate: total > 0 ? Math.round((completedJobs / total) * 100) : 0,
+                            assignedJobs,
+                            completedJobs,
+                            delayedJobs,
+                            joinedDate: t.users?.created_at || new Date().toISOString(),
+                            verified: true,
+                            status: "Active",
+                            role: "Technician"
+                        };
+                    }));
 
                     if (overviewRes.auditLogs) {
                         setActivityLogs(overviewRes.auditLogs.map((l, idx) => ({
@@ -227,28 +236,41 @@ export function AdminStoreProvider({ children }) {
         }
     };
 
-    // Reports built from real API data
+    // Reports built from real booking data per period
     const kStats = getLiveStats().kpi;
     const cStats = getLiveStats().charts;
-    const totalBookings = bookings.length + emergencies.length;
+    const allBookings = [...bookings, ...emergencies];
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const makeReport = (period, revenue, total) => ({
-        period,
-        totalBookings: total,
-        completedJobs: kStats.completedJobs || 0,
-        cancelledJobs: kStats.cancelledJobs || 0,
-        emergencyJobs: kStats.emergencyBookings || 0,
-        expectedRevenue: revenue || 0,
-        completionRate: total > 0 ? Math.round((kStats.completedJobs / total) * 100) : 0,
-        technicianPerformance: (cStats.technicianWorkload || []).map(t => ({
-            name: t.name, completed: t.completed, rating: 5
-        }))
-    });
+    const makeReport = (period, revenue, since) => {
+        const periodBookings = since
+            ? allBookings.filter(b => b.createdAt && new Date(b.createdAt) >= since)
+            : allBookings;
+        const total      = periodBookings.length;
+        const completed  = periodBookings.filter(b => b.status === 'Completed').length;
+        const cancelled  = periodBookings.filter(b => b.status === 'Cancelled').length;
+        const emergency  = periodBookings.filter(b => b.emergency).length;
+        return {
+            period,
+            totalBookings: total,
+            completedJobs: completed,
+            cancelledJobs: cancelled,
+            emergencyJobs: emergency,
+            expectedRevenue: revenue || 0,
+            completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+            technicianPerformance: (cStats.technicianWorkload || []).map(t => ({
+                name: t.name, completed: t.completed, rating: 5
+            }))
+        };
+    };
 
     const reports = {
-        daily:   makeReport("Today",      kStats.expectedRevenueToday,  kStats.totalBookingsToday),
-        weekly:  makeReport("This Week",  kStats.expectedRevenueWeek,   totalBookings),
-        monthly: makeReport("This Month", kStats.expectedRevenueMonth,  totalBookings)
+        daily:   makeReport('Today',      kStats.expectedRevenueToday,  startOfToday),
+        weekly:  makeReport('This Week',  kStats.expectedRevenueWeek,   startOfWeek),
+        monthly: makeReport('This Month', kStats.expectedRevenueMonth,  startOfMonth)
     };
 
     return (
