@@ -82,8 +82,8 @@ const assignTechnician = async (req, res) => {
         userId: booking.customer_id,
         bookingId,
         title: 'Technician Assigned',
-        description: `Technician ${techDetails.name} has been assigned to your booking #${bookingId}! Contact: ${techDetails.phone}, Rating: ${techDetails.rating}.`,
-        notificationType: 'Booking',
+        description: `Technician ${techDetails.name} has been assigned to your booking #${bookingId}. Contact: ${techDetails.phone}, Rating: ${techDetails.rating}.`,
+        notificationType: 'Assignment',
         priority: 'Medium'
       });
     }
@@ -284,6 +284,7 @@ const updateBookingStatus = async (req, res) => {
       updatePayload.cancellation_reason = cancelReason || null;
       updatePayload.cancelled_at = new Date().toISOString();
       updatePayload.cancelled_by = userId;
+      updatePayload.cancelled_by_role = userRole || null;
     }
 
     await supabaseAdmin
@@ -351,7 +352,7 @@ const getDispatcherDashboardStats = async (req, res) => {
 
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
-      .select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(availability_status, rating, users(full_name, phone, email))');
+      .select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(technician_id, rating, availability_status, category_id, cancelled_by_role, users(full_name, phone, email))');
     if (bErr) throw bErr;
 
     const { data: technicians, error: tErr } = await supabaseAdmin
@@ -367,9 +368,7 @@ const getDispatcherDashboardStats = async (req, res) => {
       b.emergency_flag === true && b.booking_status !== 'Completed' && b.booking_status !== 'Cancelled'
     );
 
-    const cancelledTodayList = bookings.filter(b =>
-      b.booking_status === 'Cancelled'
-    );
+    const cancelledList = bookings.filter(b => b.booking_status === 'Cancelled');
 
     return res.status(200).json({
       success: true,
@@ -378,11 +377,11 @@ const getDispatcherDashboardStats = async (req, res) => {
         availableTechnicians,
         busyTechnicians,
         emergencyJobs: emergencyJobsList.length,
-        cancelledToday: cancelledTodayList.length
+        cancelledToday: cancelledList.length
       },
-      bookings: bookings.filter(b => !b.emergency_flag),
+      bookings: bookings.filter(b => !b.emergency_flag && b.booking_status !== 'Cancelled'),
       emergencies: emergencyJobsList,
-      cancelledBookings: cancelledTodayList,
+      cancelledBookings: cancelledList,
       technicians
     });
   } catch (err) {
@@ -756,6 +755,81 @@ const getActiveBookingsWithLocation = async (req, res) => {
   }
 };
 
+// 10. Accept Emergency Broadcast — first technician to accept gets auto-assigned
+const acceptEmergencyBroadcast = async (req, res) => {
+  const { bookingId, technicianId } = req.body;
+
+  try {
+    // Check booking is still unassigned and pending
+    const { data: booking, error: bErr } = await supabaseAdmin
+      .from('bookings')
+      .select('booking_id, booking_status, technician_id, customer_id, issue_description, street, city')
+      .eq('booking_id', bookingId)
+      .single();
+
+    if (bErr || !booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.technician_id) return res.status(409).json({ error: 'Already assigned to another technician' });
+
+    // Fetch technician details
+    const { data: tech, error: tErr } = await supabaseAdmin
+      .from('technicians')
+      .select('technician_id, user_id, rating, users(full_name, phone)')
+      .eq('technician_id', technicianId)
+      .single();
+
+    if (tErr || !tech) return res.status(404).json({ error: 'Technician not found' });
+
+    // Assign the booking
+    await supabaseAdmin
+      .from('bookings')
+      .update({ technician_id: technicianId, booking_status: 'Assigned', updated_at: new Date().toISOString() })
+      .eq('booking_id', bookingId);
+
+    await supabaseAdmin
+      .from('technicians')
+      .update({ availability_status: 'Busy' })
+      .eq('technician_id', technicianId);
+
+    // Notify technician
+    await createNotification({
+      recipientRole: 'TECHNICIAN',
+      userId: tech.user_id,
+      bookingId,
+      title: 'Emergency Job Accepted',
+      description: `You have been assigned to emergency booking #${bookingId}. Address: ${booking.street}, ${booking.city}`,
+      notificationType: 'Assignment',
+      priority: 'High'
+    });
+
+    // Notify customer
+    if (booking.customer_id) {
+      await createNotification({
+        recipientRole: 'CUSTOMER',
+        userId: booking.customer_id,
+        bookingId,
+        title: 'Technician Assigned',
+        description: `Technician ${tech.users?.full_name} has accepted your emergency booking #${bookingId}. Contact: ${tech.users?.phone}, Rating: ${tech.rating}.`,
+        notificationType: 'Assignment',
+        priority: 'High'
+      });
+    }
+
+    // Notify dispatcher/admin
+    await createNotification({
+      recipientRole: 'DISPATCHER',
+      bookingId,
+      title: 'Emergency Accepted',
+      description: `Technician ${tech.users?.full_name} accepted emergency booking #${bookingId}.`,
+      notificationType: 'Emergency',
+      priority: 'High'
+    });
+
+    return res.status(200).json({ success: true, message: `${tech.users?.full_name} assigned to booking #${bookingId}` });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   assignTechnician,
   reassignTechnician,
@@ -768,5 +842,6 @@ module.exports = {
   searchCustomerByPhone,
   createManualBooking,
   getDispatcherProfile,
-  getActiveBookingsWithLocation
+  getActiveBookingsWithLocation,
+  acceptEmergencyBroadcast
 };

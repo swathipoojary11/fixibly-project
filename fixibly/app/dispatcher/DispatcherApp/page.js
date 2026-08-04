@@ -334,11 +334,13 @@ const DispatcherApp = () => {
   const { dispNotifs, loading, fetchError } = useAppStore();
 
   React.useEffect(() => {
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-    fetch(`${API}/dispatcher/profile`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.success && d.data) setDispatcherProfile(d.data); })
-      .catch(() => {});
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setDispatcherProfile(parsed);
+      }
+    } catch {}
   }, []);
   const unreadCount = dispNotifs.filter(n => !n.read).length;
   const goBack = () => setActivePage("dashboard");
@@ -357,7 +359,7 @@ const DispatcherApp = () => {
       </div>
     );
     switch (activePage) {
-      case "dashboard":     return <DispatcherDashboard onNavigate={setActivePage} />;
+      case "dashboard":     return <DispatcherDashboard onNavigate={setActivePage} dispatcherName={dispatcherProfile?.full_name || ""} />;
       case "bookings":      return <ViewBookings onBack={goBack} />;
       case "emergency":     return <EmergencyBookings onBack={goBack} />;
       case "manual":        return <ManualBooking onBack={goBack} />;
@@ -365,7 +367,7 @@ const DispatcherApp = () => {
       case "status":        return <CurrentStatus onBack={goBack} />;
       case "cancelled":     return <CancelledBookings onBack={goBack} />;
       case "notifications": return <DispatcherNotifications onBack={goBack} />;
-      default:              return <DispatcherDashboard onNavigate={setActivePage} />;
+      default:              return <DispatcherDashboard onNavigate={setActivePage} dispatcherName={dispatcherProfile?.full_name || ""} />;
     }
   };
 
@@ -425,14 +427,14 @@ const DispatcherApp = () => {
     onClick={() => setShowProfile(!showProfile)}
     className="w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white text-sm font-bold shadow-md hover:scale-105 transition"
   >
-    D
+    {(dispatcherProfile?.full_name || dispatcherProfile?.email || "D")[0].toUpperCase()}
   </button>
 
   {showProfile && (
     <ProfileCard
       floating
       user={{
-        name: dispatcherProfile?.full_name || "Dispatcher",
+        name: dispatcherProfile?.full_name || dispatcherProfile?.email?.split('@')[0] || "Dispatcher",
         role: "Dispatcher",
         id: dispatcherProfile?.user_id || "—",
         email: dispatcherProfile?.email || "—",

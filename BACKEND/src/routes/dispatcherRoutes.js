@@ -11,7 +11,8 @@ const {
   searchCustomerByPhone,
   createManualBooking,
   getDispatcherProfile,
-  getActiveBookingsWithLocation
+  getActiveBookingsWithLocation,
+  acceptEmergencyBroadcast
 } = require('../controllers/dispatcherController');
 const { authenticateUser } = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
@@ -24,6 +25,7 @@ router.patch('/status', updateBookingStatus);
 router.get("/profile", getDispatcherProfile);
 // Emergency Routes
 router.post('/emergency/broadcast', triggerEmergencyBroadcast);
+router.post('/emergency/accept', acceptEmergencyBroadcast);
 router.patch('/emergency/downgrade', downgradeEmergency);
 
 // Customer Search Routes

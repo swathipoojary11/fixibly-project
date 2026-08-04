@@ -86,6 +86,7 @@ import {
   FiCalendar, FiUsers, FiBell, FiClock, FiCheckCircle, FiXCircle, FiZap,
 } from "react-icons/fi";
 import { useDispatcherStore as useAppStore } from "../DispatcherStore";
+import Footer from "../../components/dispatcher-admin/footer.js";
 
 const actionCards = [
   {
@@ -119,7 +120,7 @@ const colorMap = {
   purple: { bg: "bg-purple-50", text: "text-purple-600", border: "border-purple-100" },
 };
 
-const DispatcherDashboard = ({ onNavigate = () => {} }) => {
+const DispatcherDashboard = ({ onNavigate = () => {}, dispatcherName = "" }) => {
   const { getLiveStats } = useAppStore();
   const { dispatcher: stats } = getLiveStats();
 
@@ -136,7 +137,7 @@ const DispatcherDashboard = ({ onNavigate = () => {} }) => {
       {/* Hero Welcome Section */}
       <div className="rounded-2xl bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white p-8">
         <h1 className="text-3xl font-bold">
-          Welcome Back, Dispatcher 👋
+          Welcome Back, {dispatcherName || "Dispatcher"} 👋
         </h1>
         <p className="mt-2 text-gray-300 max-w-2xl">
           Manage bookings, assign technicians, monitor emergencies and coordinate
@@ -180,6 +181,7 @@ const DispatcherDashboard = ({ onNavigate = () => {} }) => {
           })}
         </div>
       </div>
+      <Footer></Footer>
     </div>
   );
 };

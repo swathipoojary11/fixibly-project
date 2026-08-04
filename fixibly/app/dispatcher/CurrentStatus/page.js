@@ -174,7 +174,7 @@ const CurrentStatus = ({ onBack = () => {} }) => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p className="text-xs text-blue-500">Location updates when technician shares it.</p>
+                                            <p className="text-xs text-blue-500">Location updates.</p>
                                         )}
                                     </div>
 
@@ -208,10 +208,10 @@ const CurrentStatus = ({ onBack = () => {} }) => {
                                         </div>
                                     </div>
 
-                                    <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 flex items-center gap-2">
-                                        <FiAlertCircle className="w-4 h-4 text-yellow-500 shrink-0" />
-                                        <p className="text-xs text-yellow-700">Status updates are driven by the technician. This view auto-refreshes every 15 seconds.</p>
-                                    </div>
+                                    {/* <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 flex items-center gap-2"> */}
+                                        {/* <FiAlertCircle className="w-4 h-4 text-yellow-500 shrink-0" /> */}
+                                        {/* <p className="text-xs text-yellow-700">Status updates are driven by the technician. This view auto-refreshes every 15 seconds.</p> */}
+                                    {/* </div> */}
                                 </div>
                             </div>
                         ) : (

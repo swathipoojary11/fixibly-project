@@ -15,30 +15,18 @@ const SORT_OPTIONS = [
 ];
 
 const TechnicianPerformance = ({ onBack = () => {} }) => {
-  const { technicians, bookings, emergencies } = useAppStore();
+  const { technicians } = useAppStore();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});
   const [sortKey, setSortKey] = useState("best");
 
-  // Enrich technicians with computed job stats from bookings
+  // Use pre-computed stats from AdminStore (computed from raw bookings during mapping)
   const enriched = useMemo(() => {
-    const allBookings = [...bookings, ...emergencies];
-    return technicians.map(t => {
-      const mine = allBookings.filter(b => b.technicianId === t.id || b.technicianName === t.name);
-      const completed  = mine.filter(b => b.status === "Completed").length;
-      const assigned   = mine.filter(b => ["Assigned","Accepted","On The Way","Arrived","Working","In Progress"].includes(b.status)).length;
-      const delayed    = mine.filter(b => b.status === "Delayed").length;
-      const total      = mine.length;
-      return {
-        ...t,
-        completedJobs:  completed,
-        assignedJobs:   assigned,
-        delayedJobs:    delayed,
-        completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
-        avgResponseTime: t.avgResponseTime || "—"
-      };
-    });
-  }, [technicians, bookings, emergencies]);
+    return technicians.map(t => ({
+      ...t,
+      avgResponseTime: t.avgResponseTime || "—"
+    }));
+  }, [technicians]);
 
   const filtered = useMemo(() => {
     const sortFn = SORT_OPTIONS.find(s => s.key === sortKey)?.fn || SORT_OPTIONS[0].fn;
