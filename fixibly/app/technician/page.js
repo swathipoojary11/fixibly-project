@@ -43,57 +43,54 @@ export default function TechnicianDashboard() {
 
         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 pb-16">
 
-          {/* Error Banner */}
           {error && (
-            <div className="mb-6 -mt-6 relative z-30 bg-red-50 border border-red-200 text-red-700 rounded-none px-6 py-3 text-sm font-medium flex items-center gap-2">
+            <div className="mb-5 -mt-5 relative z-30 bg-red-50 border border-red-200 text-red-700 rounded-2xl px-5 py-3 text-sm font-medium flex items-center gap-2">
               <span className="font-bold">Error:</span> {error}
-              <button
-                onClick={fetchAll}
-                className="ml-auto text-xs font-bold underline hover:no-underline"
-              >
-                Retry
-              </button>
+              <button onClick={fetchAll} className="ml-auto text-xs font-bold underline hover:no-underline">Retry</button>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 -mt-10 relative z-30">
-            <div className="lg:col-span-8 space-y-8">
-              <div className="rounded-none bg-white border border-[#ECECEC] shadow-sm p-7 sm:p-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 -mt-10 relative z-30">
+            <div className="lg:col-span-8 space-y-6">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                   <StatsCard
                     title="Assigned Jobs"
                     value={loading ? "…" : (stats?.activeJobs ?? 0)}
                     subtitle="Active Dispatch"
-                    icon={<MdAssignment size={28} />}
+                    icon={<MdAssignment size={22} />}
+                    color="orange"
                   />
                   <StatsCard
                     title="Completed"
                     value={loading ? "…" : (stats?.completedToday ?? 0)}
                     subtitle="Today's Finished"
-                    icon={<MdCheckCircle size={28} />}
+                    icon={<MdCheckCircle size={22} />}
+                    color="green"
                   />
                   <StatsCard
-                    title="Current Mode"
+                    title="Work Mode"
                     value={loading ? "…" : (availability || "available")}
-                    subtitle="Work Availability"
-                    icon={<MdStar size={28} />}
+                    subtitle="Availability"
+                    icon={<MdStar size={22} />}
+                    color="blue"
                   />
                   <StatsCard
                     title="Emergency"
                     value={loading ? "…" : (stats?.emergencyRequests ?? 0)}
                     subtitle="Pending Request"
-                    icon={<MdEmergency size={28} />}
+                    icon={<MdEmergency size={22} />}
+                    color="red"
                   />
                 </div>
               </div>
 
-              {/* Loading skeleton for jobs */}
               {loading ? (
-                <div className="rounded-none bg-white border border-[#ECECEC] shadow-sm p-7 sm:p-8 animate-pulse">
-                  <div className="h-6 bg-[#ECECEC] rounded w-1/3 mb-6" />
-                  <div className="space-y-4">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 animate-pulse">
+                  <div className="h-5 bg-gray-100 rounded w-1/3 mb-5" />
+                  <div className="space-y-3">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-20 bg-[#F7F7F7] rounded border border-[#ECECEC]" />
+                      <div key={i} className="h-16 bg-gray-50 rounded-xl border border-gray-100" />
                     ))}
                   </div>
                 </div>
@@ -101,13 +98,13 @@ export default function TechnicianDashboard() {
                 <AssignedJobs />
               )}
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <PerformanceCard />
                 <Timeline timeline={timeline} />
               </div>
             </div>
 
-            <div className="lg:col-span-4 space-y-8">
+            <div className="lg:col-span-4 space-y-6">
               <TechnicianProfile technician={technician} />
               <EmergencyCard emergencyJob={emergencyJob} />
             </div>

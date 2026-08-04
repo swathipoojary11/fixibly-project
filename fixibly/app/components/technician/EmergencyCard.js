@@ -1,41 +1,36 @@
 "use client";
 import React, { useState } from "react";
-import { MdWarning, MdCheckCircle } from "react-icons/md";
+import { AlertTriangle, CheckCircle, MapPin, User, Zap } from "lucide-react";
 import useTechnicianStore from "../../technician/store/technicianStore";
 
 function EmergencyCard({ emergencyJob }) {
   const acceptEmergencyJob = useTechnicianStore((state) => state.acceptEmergencyJob);
-  const [phase, setPhase]   = useState("idle"); // idle | loading | accepted | error
+  const [phase, setPhase]   = useState("idle");
   const [errMsg, setErrMsg] = useState("");
 
-  // ── No active emergency ────────────────────────────────────────────────────
   if (!emergencyJob) {
     return (
-      <div className="rounded-[28px] bg-white border border-slate-200 text-slate-900 p-7 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-[18px] bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-sm shrink-0">
-            <MdCheckCircle size={24} />
+          <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+            <CheckCircle size={20} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">No Active Emergency</h3>
-            <p className="text-xs text-slate-500">All clear — no urgent dispatch at this time</p>
+            <h3 className="text-base font-bold text-gray-900">No Active Emergency</h3>
+            <p className="text-xs text-gray-500">All clear — no urgent dispatch at this time</p>
           </div>
         </div>
-        <div className="mt-5 pt-4 border-t border-white/10">
-          <p className="text-sm text-[#9A9A9A]">
-            Emergency jobs will appear here when dispatched to you.
-          </p>
-        </div>
+        <p className="mt-4 text-sm text-gray-400 border-t border-gray-100 pt-4">
+          Emergency jobs will appear here when dispatched to you.
+        </p>
       </div>
     );
   }
 
-  // ── Active emergency ───────────────────────────────────────────────────────
   const jobId = emergencyJob.id || emergencyJob.booking_id;
 
   const handleAccept = async () => {
-    setPhase("loading");
-    setErrMsg("");
+    setPhase("loading"); setErrMsg("");
     try {
       await acceptEmergencyJob(jobId);
       setPhase("accepted");
@@ -45,72 +40,76 @@ function EmergencyCard({ emergencyJob }) {
     }
   };
 
-  const renderButton = () => {
-    if (phase === "idle") return (
-      <button
-        onClick={handleAccept}
-        className="mt-6 w-full rounded-full bg-orange-500 hover:bg-orange-600 text-white py-3.5 font-bold text-sm shadow-lg shadow-orange-500/20 transition-all"
-      >
-        Accept Emergency Request
-      </button>
-    );
-    if (phase === "loading") return (
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-100 p-3 text-sm text-slate-700 flex items-center gap-2">
-        <span className="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin shrink-0" />
-        Accepting emergency request...
-      </div>
-    );
-    if (phase === "accepted") return (
-      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-100 p-3 text-sm font-semibold text-emerald-800">
-        ✓ Emergency accepted — it will appear in your assigned jobs list shortly.
-      </div>
-    );
-    if (phase === "error") return (
-      <div className="mt-6 space-y-3">
-        <div className="rounded-2xl border border-red-200 bg-red-100 p-3 text-sm font-semibold text-red-700">
-          {errMsg}
-        </div>
-        <button
-          onClick={() => setPhase("idle")}
-          className="w-full rounded-full border border-slate-200 text-slate-900 py-2.5 text-sm font-bold hover:bg-slate-100 transition-all"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-    return null;
-  };
-
   return (
-    <div className="rounded-[28px] bg-white border border-slate-200 text-slate-900 p-7 shadow-sm relative overflow-hidden">
-      <div className="absolute -right-8 -top-8 w-40 h-40 bg-orange-500/10 rounded-full blur-2xl pointer-events-none" />
-      <div className="flex items-center justify-between gap-4 relative z-10">
+    <div className="bg-white rounded-2xl border border-red-200 shadow-sm p-6 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+      <div className="flex items-center justify-between gap-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-[18px] bg-orange-500 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 shrink-0">
-            <MdWarning size={24} />
+          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+            <AlertTriangle size={20} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Emergency Dispatch</h3>
-            <p className="text-xs text-slate-500">Urgent priority request</p>
+            <h3 className="text-base font-bold text-gray-900">Emergency Dispatch</h3>
+            <p className="text-xs text-gray-500">Urgent priority request</p>
           </div>
         </div>
-        <span className="rounded-full bg-orange-50 text-orange-700 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider border border-orange-200">
-          {phase === "accepted" ? "ACCEPTED" : emergencyJob.severity?.toUpperCase() || "CRITICAL"}
+        <span className="bg-red-100 text-red-700 border border-red-200 text-xs font-bold px-2.5 py-1 rounded-full uppercase">
+          {phase === "accepted" ? "Accepted" : "Critical"}
         </span>
       </div>
-      <div className="mt-5 pt-4 border-t border-slate-200 relative z-10">
-        <h4 className="text-xl font-bold text-slate-900">
+
+      <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+        <h4 className="text-base font-bold text-gray-900">
           {emergencyJob.title || emergencyJob.service_type || "Emergency Service"}
         </h4>
-        <p className="mt-1.5 text-xs text-slate-500 font-medium">
-          📍 {emergencyJob.service_address || emergencyJob.address || "Address not available"}
-        </p>
-        {emergencyJob.customer_name && (
-          <p className="mt-1 text-xs text-slate-500">
-            👤 {emergencyJob.customer_name}
+        {emergencyJob.service_address && (
+          <p className="text-xs text-gray-500 flex items-center gap-1.5">
+            <MapPin size={12} className="text-orange-500 shrink-0" />
+            {emergencyJob.service_address}
           </p>
         )}
-        {renderButton()}
+        {emergencyJob.customer_name && (
+          <p className="text-xs text-gray-500 flex items-center gap-1.5">
+            <User size={12} className="text-orange-500 shrink-0" />
+            {emergencyJob.customer_name}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4">
+        {phase === "idle" && (
+          <button
+            onClick={handleAccept}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+          >
+            <Zap size={15} /> Accept Emergency
+          </button>
+        )}
+        {phase === "loading" && (
+          <div className="w-full bg-gray-50 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            Accepting...
+          </div>
+        )}
+        {phase === "accepted" && (
+          <div className="w-full bg-green-50 border border-green-200 text-green-700 py-2.5 rounded-xl text-sm font-semibold text-center">
+            ✓ Accepted — check your assigned jobs
+          </div>
+        )}
+        {phase === "error" && (
+          <div className="space-y-2">
+            <div className="bg-red-50 border border-red-200 text-red-700 py-2.5 px-3 rounded-xl text-sm font-semibold">
+              {errMsg}
+            </div>
+            <button
+              onClick={() => setPhase("idle")}
+              className="w-full border border-gray-200 text-gray-700 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

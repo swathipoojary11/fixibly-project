@@ -1,17 +1,23 @@
 import React from "react";
 
-function StatsCard({ title, value, subtitle, icon }) {
+function StatsCard({ title, value, subtitle, icon, color = "orange" }) {
+  const colors = {
+    orange: { bg: "bg-orange-50", text: "text-orange-600", icon: "bg-orange-100 text-orange-600" },
+    green:  { bg: "bg-green-50",  text: "text-green-600",  icon: "bg-green-100 text-green-600"  },
+    red:    { bg: "bg-red-50",    text: "text-red-500",    icon: "bg-red-100 text-red-500"      },
+    blue:   { bg: "bg-blue-50",   text: "text-blue-600",   icon: "bg-blue-100 text-blue-600"    },
+  };
+  const c = colors[color] || colors.orange;
+
   return (
-    <div className="bg-white rounded-none p-7 border border-[#ECECEC] shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
-      <div className="flex justify-between items-start gap-4">
-        <div>
-          <p className="text-[#7B7B7B] text-xs font-bold uppercase tracking-wider mb-2">{title}</p>
-          <h3 className="text-2xl font-extrabold text-[#202020]">{value}</h3>
-          <p className="text-xs font-semibold text-[#9A9A9A] mt-3">{subtitle}</p>
-        </div>
-        <div className="w-14 h-14 rounded-none bg-[#FFF3EE] text-[#F54C0F] border border-[#F54C0F]/20 flex items-center justify-center shadow-sm shrink-0">
-          {icon}
-        </div>
+    <div className={`rounded-2xl px-5 py-4 ${c.bg} flex items-center gap-4`}>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${c.icon}`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-xs font-medium text-gray-500 mb-0.5">{title}</p>
+        <p className={`text-2xl font-bold ${c.text}`}>{value}</p>
+        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
