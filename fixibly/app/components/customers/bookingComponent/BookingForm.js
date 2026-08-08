@@ -46,7 +46,59 @@ export default function BookingForm({ categoryId }) {
   const [preferredTime, setPreferredTime] = useState('');
   const [anytimeService, setAnytimeService] = useState(false);
 
-  // 1. FETCH CATEGORY, PROBLEMS & CUSTOMER PROFILE ON LOAD
+//   // 1. FETCH CATEGORY, PROBLEMS & CUSTOMER PROFILE ON LOAD
+//   useEffect(() => {
+//   async function fetchInitData() {
+//     if (!categoryId) return;
+//     setLoading(true);
+//     setError('');
+
+//     const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+
+//     if (!token) {
+//       setError('You are not logged in. Please log in as a Customer.');
+//       setLoading(false);
+//       return;
+//     }
+
+//     try {
+//       const res = await fetch(`http://localhost:5000/api/customer/booking-init/${categoryId}`, {
+//         headers: { Authorization: `Bearer ${token}` }
+//       });
+//       const result = await res.json();
+
+//       if (res.status === 403) {
+//         setError('Access denied: Your account does not have Customer permissions.');
+//         return;
+//       }
+
+//       if (result.success && result.data) {
+//         setCategoryData(result.data.category);
+//         setProblemsList(result.data.problems || []);
+
+//         if (result.data.customer) {
+//           setCustomerInfo({
+//             full_name: result.data.customer.full_name || '',
+//             email: result.data.customer.email || '',
+//             phone: result.data.customer.phone || ''
+//           });
+
+//           if (result.data.customer.address) {
+//             setAddress((prev) => ({ ...prev, street: result.data.customer.address }));
+//           }
+//         }
+//       } else {
+//         setError(result.message || 'Failed to fetch category information.');
+//       }
+//     } catch (err) {
+//       setError('Error connecting to server.');
+//     } finally {
+//       setLoading(false);
+//     }
+//   }
+
+//   fetchInitData();
+// }, [categoryId]);
   useEffect(() => {
     async function fetchInitData() {
       if (!categoryId) return;
@@ -167,7 +219,7 @@ export default function BookingForm({ categoryId }) {
 
       if (result.success) {
         const createdBookingId = result.data?.bookingId || result.booking?.booking_id;
-        setSuccessMsg(`🎉 Booking created successfully! Booking ID: #${createdBookingId}`);
+        setSuccessMsg(` Booking created successfully! Booking ID: #${createdBookingId}`);
         
         setTimeout(() => {
           router.push(`/customer/bookingConfirmation?bookingId=${createdBookingId}`);

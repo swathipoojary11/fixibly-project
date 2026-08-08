@@ -93,7 +93,7 @@ export default function BookingSuccessCard({ booking }) {
         </div>
 
         {/* Success Message */}
-        <div className="mt-10 bg-orange-100 border border-orange-300 rounded-2xl p-8">
+        {/* <div className="mt-10 bg-orange-100 border border-orange-300 rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-orange-700">
             🎉 What Happens Next?
           </h2>
@@ -102,7 +102,7 @@ export default function BookingSuccessCard({ booking }) {
             <p>👨‍🔧 A verified technician will be assigned for your area.</p>
             <p>📱 Live status tracking update is rendered automatically on this page.</p>
           </div>
-        </div>
+        </div> */}
       </div>
     </section>
   );

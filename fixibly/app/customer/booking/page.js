@@ -18,13 +18,11 @@ export default function BookingPage() {
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
       <Navbar />
-
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10 pt-24">
         <Suspense fallback={<div className="p-8 text-center text-gray-500 font-semibold">Loading booking form...</div>}>
           <BookingContent />
         </Suspense>
       </main>
-
       <Footer />
     </div>
   );

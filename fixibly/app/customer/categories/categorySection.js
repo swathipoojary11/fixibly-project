@@ -107,6 +107,7 @@ export default function CategorySection() {
               <CategoryCard
                 key={category.id}
                 {...category}
+                // ... this is javascript spread operator so it will directly pass all the properties of the category object to the CategoryCard component
               />
             ))}
           </div>
