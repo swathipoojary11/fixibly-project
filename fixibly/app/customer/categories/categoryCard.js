@@ -24,6 +24,7 @@ export default function CategoryCard({
           alt={title}
           className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
         />
+        {/* if that icon exists then  it will be visible */}
        {icon && (
           <div className="absolute -bottom-8 right-6 bg-orange-500 h-16 w-16 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
             {icon}

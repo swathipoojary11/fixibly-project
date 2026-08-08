@@ -196,7 +196,7 @@ function FeedbackContent() {
                   onChange={(e) => setChecklist({ ...checklist, arrivedOnTime: e.target.checked })}
                   className="accent-green-600 w-5 h-5"
                 />
-                <span className="font-semibold text-gray-800 text-sm">⏱️ Technician Arrived on Time</span>
+                <span className="font-semibold text-gray-800 text-sm">Technician Arrived on Time</span>
               </label>
 
               <label
@@ -210,7 +210,7 @@ function FeedbackContent() {
                   onChange={(e) => setChecklist({ ...checklist, politeBehavior: e.target.checked })}
                   className="accent-green-600 w-5 h-5"
                 />
-                <span className="font-semibold text-gray-800 text-sm">🤝 Polite Behavior & Clear Communication</span>
+                <span className="font-semibold text-gray-800 text-sm"> Polite Behavior & Clear Communication</span>
               </label>
 
               <label
@@ -224,7 +224,7 @@ function FeedbackContent() {
                   onChange={(e) => setChecklist({ ...checklist, areaCleaned: e.target.checked })}
                   className="accent-green-600 w-5 h-5"
                 />
-                <span className="font-semibold text-gray-800 text-sm">🧹 Work Area Thoroughly Cleaned Up</span>
+                <span className="font-semibold text-gray-800 text-sm"> Work Area Thoroughly Cleaned Up</span>
               </label>
 
               <label
@@ -238,7 +238,7 @@ function FeedbackContent() {
                   onChange={(e) => setChecklist({ ...checklist, problemResolved: e.target.checked })}
                   className="accent-green-600 w-5 h-5"
                 />
-                <span className="font-semibold text-gray-800 text-sm">🛠️ Problem Fully Resolved</span>
+                <span className="font-semibold text-gray-800 text-sm"> Problem Fully Resolved</span>
               </label>
             </div>
           </div>
