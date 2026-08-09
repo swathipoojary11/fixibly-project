@@ -283,8 +283,7 @@ const updateBookingStatus = async (req, res) => {
     if (status === 'Cancelled') {
       updatePayload.cancellation_reason = cancelReason || null;
       updatePayload.cancelled_at = new Date().toISOString();
-      updatePayload.cancelled_by = userId;
-      updatePayload.cancelled_by_role = userRole || null;
+      updatePayload.cancelled_by = userId || null;
     }
 
     await supabaseAdmin
@@ -352,7 +351,7 @@ const getDispatcherDashboardStats = async (req, res) => {
 
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
-      .select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(technician_id, rating, availability_status, category_id, cancelled_by_role, users(full_name, phone, email))');
+      .select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(technician_id, rating, availability_status, category_id, users(full_name, phone, email))');
     if (bErr) throw bErr;
 
     const { data: technicians, error: tErr } = await supabaseAdmin
@@ -598,7 +597,7 @@ const createManualBooking = async (req, res) => {
         issue_description: issueDescription,
         emergency_flag: emergencyFlag || false,
         emergency_reason: emergencyReason || null,
-        priority: priority || 'Normal',
+        priority: emergencyFlag ? 'Emergency' : 'Normal',
         preferred_date: preferredDate,
         preferred_time: preferredTime,
         house_number: houseNumber,
@@ -717,7 +716,7 @@ const getActiveBookingsWithLocation = async (req, res) => {
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
       .select('booking_id, booking_status, customer_id, technician_id, issue_description, category_id, preferred_date, preferred_time, house_number, street, area, city, pincode, customers:users!fk_booking_customer(full_name, phone), technicians(technician_id, users(full_name, phone))')
-      .not('booking_status', 'in', '("Completed", "Cancelled")');
+      .not('booking_status', 'in', '(Completed,Cancelled)');
 
     if (bErr) throw bErr;
 

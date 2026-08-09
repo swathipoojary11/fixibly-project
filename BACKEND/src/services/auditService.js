@@ -1,36 +1,21 @@
 
 const { supabaseAdmin } = require('../config/supabase');
 
-/**
- * Logs a system audit or user action event into the database.
- * 
- * @param {string} userId - The ID of the user performing the action (Admin, Dispatcher, etc.)
- * @param {string} userRole - The role of the user (e.g., 'ADMIN', 'DISPATCHER')
- * @param {string} actionType - The type of action (e.g., 'TECHNICIAN_ASSIGNED', 'BOOKING_CANCELLED')
- * @param {string} description - Details about what took place
- */
 const logAuditEvent = async (userId, userRole, actionType, description) => {
   try {
+    if (!userId) return; // user_id is NOT NULL in DB — skip if no user
     const { error } = await supabaseAdmin
-      .from('system_audit_logs') // Matches your schema table
-      .insert([
-        {
-          user_id: userId || null,
-          role: userRole || 'SYSTEM',
-          activity_type: actionType,
-          activity_description: description,
-          created_at: new Date().toISOString()
-        }
-      ]);
-
-    if (error) {
-      console.error('Failed to log audit event:', error.message);
-    }
+      .from('activity_logs')
+      .insert([{
+        user_id: userId,
+        activity_type: 'Administrative Action',
+        activity_description: `[${userRole || 'SYSTEM'}] ${actionType}: ${description}`,
+        created_at: new Date().toISOString()
+      }]);
+    if (error) console.error('Failed to log audit event:', error.message);
   } catch (err) {
     console.error('Audit service error:', err.message);
   }
 };
 
-module.exports = {
-  logAuditEvent
-};
+module.exports = { logAuditEvent };

@@ -11,7 +11,7 @@ const INITIAL = {
     issue: "", priority: "Normal", emergency: "No", preferredDate: ""
 };
 
-const CATEGORIES = ["Electrician", "Plumber", "AC Repair", "Carpenter", "Painter"];
+const CATEGORIES = ["Plumbing", "Electrical", "HVAC", "House Cleaning", "Exterior Cleaning", "Handyman", "Landscaping", "Pest Control", "Home Remodeling", "Painting & Decoration"];
 
 // Defined OUTSIDE component so React doesn't remount on every render
 const Field = ({ label, error, children }) => (
@@ -212,7 +212,8 @@ const ManualBooking = ({ onBack = () => {} }) => {
                     <div className="grid grid-cols-2 gap-5">
                         <Field label="Priority">
                             <select name="priority" value={form.priority} onChange={handleChange} className="ff-input">
-                                {["Low", "Normal", "High"].map(p => <option key={p} value={p}>{p}</option>)}
+                                <option value="Normal">Normal</option>
+                                <option value="Emergency">Emergency</option>
                             </select>
                         </Field>
                         <Field label="Emergency?">

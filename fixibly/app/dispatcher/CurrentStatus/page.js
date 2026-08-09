@@ -10,14 +10,15 @@ import {
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const TIMELINE = [
-    { key: "Assigned",    label: "Dispatcher Assigned" },
-    { key: "Accepted",    label: "Technician Accepted"  },
-    { key: "On The Way",  label: "On The Way"           },
-    { key: "Arrived",     label: "Arrived at Customer"  },
-    { key: "In Progress", label: "Work In Progress"     },
-    { key: "Completed",   label: "Completed"            },
+    { key: "Assigned",   label: "Dispatcher Assigned"  },
+    { key: "Accepted",   label: "Technician Accepted"   },
+    { key: "On The Way", label: "On The Way"            },
+    { key: "Arrived",    label: "Arrived at Customer"   },
+    { key: "Working",    label: "Work In Progress"      },
+    { key: "Completed",  label: "Completed"             },
 ];
 const STATUS_ORDER = TIMELINE.map(s => s.key);
+const LOCATION_STATUSES = ["On The Way", "Arrived", "Working", "Completed"];
 
 const CurrentStatus = ({ onBack = () => {} }) => {
     const [activeBookings, setActiveBookings] = useState([]);
@@ -31,7 +32,12 @@ const CurrentStatus = ({ onBack = () => {} }) => {
         try {
             const res = await fetch(`${API}/dispatcher/active-with-location`);
             const data = await res.json();
-            if (data.success) setActiveBookings(data.bookings || []);
+            if (data.success) {
+                const list = data.bookings || [];
+                setActiveBookings(list);
+                // Auto-select first booking if nothing selected yet
+                setSelectedId(prev => prev || (list[0]?.bookingId ?? null));
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -39,14 +45,13 @@ const CurrentStatus = ({ onBack = () => {} }) => {
         }
     }, []);
 
-    // Initial fetch + poll every 15s
     useEffect(() => {
         fetchActive();
         const interval = setInterval(fetchActive, 5000);
         return () => clearInterval(interval);
     }, [fetchActive]);
 
-    const selected = selectedId ? activeBookings.find(b => b.bookingId === selectedId) : null;
+    const selected = activeBookings.find(b => b.bookingId === selectedId) ?? null;
     const currentStageIdx = selected ? STATUS_ORDER.indexOf(selected.status) : -1;
 
     return (
@@ -156,25 +161,29 @@ const CurrentStatus = ({ onBack = () => {} }) => {
                                         <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
                                             <FiMapPin className="w-3.5 h-3.5" /> Technician Location
                                         </p>
-                                        {selected.location ? (
-                                            <div className="grid grid-cols-3 gap-2 text-xs">
-                                                <div>
-                                                    <p className="text-gray-400">Latitude</p>
-                                                    <p className="font-mono font-semibold text-dark-800">{Number(selected.location.lat).toFixed(5)}</p>
+                                        {LOCATION_STATUSES.includes(selected.status) ? (
+                                            selected.location ? (
+                                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                                    <div>
+                                                        <p className="text-gray-400">Latitude</p>
+                                                        <p className="font-mono font-semibold text-dark-800">{Number(selected.location.lat).toFixed(5)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-400">Longitude</p>
+                                                        <p className="font-mono font-semibold text-dark-800">{Number(selected.location.lng).toFixed(5)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-gray-400">Updated</p>
+                                                        <p className="font-semibold text-dark-800">
+                                                            {new Date(selected.location.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-gray-400">Longitude</p>
-                                                    <p className="font-mono font-semibold text-dark-800">{Number(selected.location.lng).toFixed(5)}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-400">Updated</p>
-                                                    <p className="font-semibold text-dark-800">
-                                                        {new Date(selected.location.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                                    </p>
-                                                </div>
-                                            </div>
+                                            ) : (
+                                                <p className="text-xs text-blue-500">Waiting for technician location...</p>
+                                            )
                                         ) : (
-                                            <p className="text-xs text-blue-500">Location updates.</p>
+                                            <p className="text-xs text-gray-400">Location shared once technician is on the way.</p>
                                         )}
                                     </div>
 
