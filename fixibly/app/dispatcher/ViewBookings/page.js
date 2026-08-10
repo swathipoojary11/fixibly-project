@@ -170,17 +170,7 @@ const TechnicianSelectModal = ({ booking, techs, onAssign, onClose }) => {
 };
 
 // ─── Booking Detail Modal ────────────────────────────────────────────────────
-const STATUSES = ["Pending", "Assigned", "Accepted", "On The Way", "Arrived", "In Progress", "Completed", "Cancelled"];
-
-const BookingDetailModal = ({ booking, onClose, onAssign, onMarkCompleted, onStatusChange }) => {
-    const [updatingStatus, setUpdatingStatus] = useState(false);
-
-    const handleStatusChange = async (newStatus) => {
-        setUpdatingStatus(true);
-        await onStatusChange(booking.id, newStatus);
-        setUpdatingStatus(false);
-    };
-
+const BookingDetailModal = ({ booking, onClose, onAssign, onMarkCompleted }) => {
     return (
         <Portal>
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -213,8 +203,6 @@ const BookingDetailModal = ({ booking, onClose, onAssign, onMarkCompleted, onSta
                                         { label: "Phone",      value: booking.customerPhone || "—" },
                                         { label: "Email",      value: booking.customerEmail || "—" },
                                         { label: "Address",    value: booking.address || "—" },
-                                        { label: "City",       value: booking.city || "—" },
-                                        { label: "Pincode",    value: booking.pincode || "—" },
                                         { label: "Pref. Time", value: booking.scheduledAt ? new Date(booking.scheduledAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "ASAP" },
                                         { label: "Created",    value: new Date(booking.createdAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" }) },
                                     ].map(({ label, value }) => (
@@ -228,19 +216,6 @@ const BookingDetailModal = ({ booking, onClose, onAssign, onMarkCompleted, onSta
                                 <div className="bg-gray-50 rounded-xl p-3">
                                     <p className="text-xs font-semibold text-gray-500 mb-1">Issue Description</p>
                                     <p className="text-sm text-dark-700">{booking.issue || "No description provided"}</p>
-                                </div>
-
-                                {/* Status Update */}
-                                <div>
-                                    <p className="text-xs font-semibold text-gray-500 mb-1">Update Status</p>
-                                    <select
-                                        value={booking.status}
-                                        onChange={e => handleStatusChange(e.target.value)}
-                                        disabled={updatingStatus || ["Completed", "Cancelled"].includes(booking.status)}
-                                        className="ff-input text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
                                 </div>
 
                                 {booking.status === "Pending" && (
@@ -340,7 +315,7 @@ const BookingDetailModal = ({ booking, onClose, onAssign, onMarkCompleted, onSta
 
 // ─── Main ViewBookings ───────────────────────────────────────────────────────
 const ViewBookings = ({ onBack = () => {} }) => {
-    const { bookings, emergencies, technicians, assignTechnician, customerMarkCompleted, updateTechnicianStatus } = useDispatcherStore();
+    const { bookings, emergencies, technicians, assignTechnician, customerMarkCompleted } = useDispatcherStore();
     const [search, setSearch] = useState("");
     const [filters, setFilters] = useState({});
     const [selected, setSelected] = useState(null);
@@ -358,13 +333,6 @@ const ViewBookings = ({ onBack = () => {} }) => {
         setSelected(null);
         showToast(`✅ ${tech.name} assigned to #${booking.id}`);
     }, [assignTechnician, showToast]);
-
-    const handleStatusChange = useCallback(async (bookingId, newStatus) => {
-        await updateTechnicianStatus(bookingId, newStatus);
-        // Update selected booking in modal
-        setSelected(prev => prev?.id === bookingId ? { ...prev, status: newStatus } : prev);
-        showToast(`✅ Status updated to ${newStatus}`);
-    }, [updateTechnicianStatus, showToast]);
 
     const allBookings = [...bookings, ...emergencies];
     const totalCount = allBookings.length;
@@ -417,7 +385,7 @@ const ViewBookings = ({ onBack = () => {} }) => {
                 <FilterBar
                     filters={[
                         { key: "status",   label: "Status",   options: ["Pending", "Assigned", "On The Way", "In Progress", "Completed", "Cancelled"] },
-                        { key: "priority", label: "Priority", options: ["High", "Normal", "Low"] },
+                        { key: "priority", label: "Priority", options: ["Normal", "Emergency"] },
                     ]}
                     values={filters}
                     onChange={(k, v) => setFilters(f => ({ ...f, [k]: v }))}
@@ -455,7 +423,6 @@ const ViewBookings = ({ onBack = () => {} }) => {
                     onClose={() => setSelected(null)}
                     onAssign={(b) => setAssigning(b)}
                     onMarkCompleted={(id) => { customerMarkCompleted(id); showToast("✅ Booking marked completed."); }}
-                    onStatusChange={handleStatusChange}
                 />
             )}
             {assigning && (

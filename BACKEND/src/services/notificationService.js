@@ -10,7 +10,7 @@ const createNotification = async ({ recipientRole, userId, bookingId, title, des
         title,
         description,
         notification_type: notificationType,
-        priority: priority || 'NORMAL',
+        priority: priority || 'Medium',
         is_read: false,
         created_at: new Date().toISOString()
       }
