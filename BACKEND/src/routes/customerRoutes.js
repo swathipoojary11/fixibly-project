@@ -4,6 +4,7 @@ const router = express.Router();
 // Middleware Imports
 const { authenticateUser } = require("../middleware/authMiddleware");
 const authorizeRoles = require("../middleware/roleMiddleware");
+const validateBooking = require("../validators/bookingValidator");
 
 // Controller Imports
 const {
@@ -70,6 +71,7 @@ router.post(
   "/bookings",
   authenticateUser,
   authorizeRoles("Customer"),
+  validateBooking,
   createBooking
 );
 
