@@ -1,53 +1,75 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { FiBell, FiSettings, FiUser } from "react-icons/fi";
-import { MdEngineering } from "react-icons/md";
-import ProfileCard from "../ProfileCard";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import useTechnicianStore from "../../technician/store/technicianStore";
 
 function DashboardHeader() {
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const profileRef = useRef(null);
+  const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const technician         = useTechnicianStore((state) => state.technician);
+  const fetchNotifications = useTechnicianStore((state) => state.fetchNotifications);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) setIsProfileOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    const interval = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
-  const profileUser = {
-    name: "Alex Carter", role: "Field Technician", id: "FT-1024",
-    email: "alex.carter@fieldflow.com", phone: "+91 98765 43210", address: "Mangalore, Karnataka",
-  };
+  const name        = technician?.full_name || technician?.name || "Technician";
+  const userInitial = name.charAt(0).toUpperCase();
 
   return (
-    <header className="bg-white border-b border-[#ECECEC] sticky top-0 z-40 shadow-sm">
-      <div className="max-w-7xl mx-auto h-20 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-none bg-[#F54C0F] text-white flex items-center justify-center shadow-md shadow-[#F54C0F]/20">
-            <MdEngineering size={26} />
-          </div>
-          <div>
-            <h2 className="text-xl font-extrabold tracking-tight text-[#202020]">FieldFlow</h2>
-            <p className="text-xs font-semibold text-[#7B7B7B]">Technician Portal</p>
-          </div>
+    <header className="fixed top-0 left-0 w-full z-50 bg-[#0F172A] border-b border-gray-800 text-white">
+      <nav className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+
+        {/* Brand */}
+        <div
+          onClick={() => router.push("/technician")}
+          className="flex items-center gap-2 cursor-pointer select-none"
+        >
+          <span className="text-xl font-extrabold tracking-tight text-white">
+            Field<span className="text-[#FF5500]">Flow</span>
+          </span>
         </div>
-        <div className="hidden md:flex items-center gap-3" ref={profileRef}>
-          <button className="w-11 h-11 rounded-none bg-[#FFF3EE] text-[#F54C0F] flex items-center justify-center border border-[#F54C0F]/20 hover:bg-[#F54C0F] hover:text-white transition-all"><FiBell size={18} /></button>
-          <button className="w-11 h-11 rounded-none bg-[#FFF3EE] text-[#F54C0F] flex items-center justify-center border border-[#F54C0F]/20 hover:bg-[#F54C0F] hover:text-white transition-all"><FiSettings size={18} /></button>
-          <div className="relative">
-            <button onClick={() => setIsProfileOpen((prev) => !prev)} className="w-11 h-11 rounded-none bg-[#181818] text-white flex items-center justify-center border border-white/10 hover:bg-[#F54C0F] transition-all" aria-label="Open profile">
-              <FiUser size={18} />
-            </button>
-            {isProfileOpen && (
-              <ProfileCard user={profileUser} floating onEdit={() => {}}
-                onLogout={() => { setIsProfileOpen(false); if (window.confirm("Are you sure you want to logout?")) alert("Logged out successfully!"); }}
-              />
-            )}
-          </div>
+
+        {/* Desktop Links */}
+        <div className="hidden md:flex items-center gap-6 text-xs font-semibold uppercase tracking-wider text-gray-200">
+          <button onClick={() => router.push("/technician")} className="hover:text-[#FF5500] transition">Home</button>
+          <button onClick={() => router.push("/technician#assigned-jobs")} className="hover:text-[#FF5500] transition">Jobs</button>
+          <button onClick={() => router.push("/technician#completed-jobs")} className="hover:text-[#FF5500] transition">History</button>
+          <button onClick={() => router.push("/technician/profile")} className="hover:text-[#FF5500] transition">Profile</button>
         </div>
-      </div>
+
+        {/* Avatar — navigates to profile page, same as customer */}
+        <div className="hidden md:flex items-center gap-3">
+          <button
+            onClick={() => router.push("/technician/profile")}
+            title={`View profile for ${name}`}
+            className="bg-[#FF5500] hover:bg-[#e04b00] text-white text-xs font-bold w-9 h-9 rounded-full flex items-center justify-center transition shadow-md shadow-[#FF5500]/20"
+          >
+            {userInitial}
+          </button>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden text-gray-300 hover:text-white p-1"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </nav>
+
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-[#0F172A] border-t border-gray-800 px-4 py-4 space-y-3 text-xs font-semibold">
+          <button onClick={() => { router.push("/technician"); setMobileMenuOpen(false); }} className="block w-full text-left py-2 text-gray-200 hover:text-[#FF5500]">Home</button>
+          <button onClick={() => { router.push("/technician#assigned-jobs"); setMobileMenuOpen(false); }} className="block w-full text-left py-2 text-gray-200 hover:text-[#FF5500]">Jobs</button>
+          <button onClick={() => { router.push("/technician#completed-jobs"); setMobileMenuOpen(false); }} className="block w-full text-left py-2 text-gray-200 hover:text-[#FF5500]">History</button>
+          <button onClick={() => { router.push("/technician/profile"); setMobileMenuOpen(false); }} className="block w-full text-left py-2 text-gray-200 hover:text-[#FF5500]">My Profile ({name})</button>
+        </div>
+      )}
     </header>
   );
 }

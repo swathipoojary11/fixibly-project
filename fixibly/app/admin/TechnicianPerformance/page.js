@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useAdminStore as useAppStore } from "../AdminStore";
 import TechnicianCard from "../../components/admin/TechnicianCard";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import FilterBar from "../../components/dispatcher-admin/FilterBar";
@@ -14,26 +14,38 @@ const SORT_OPTIONS = [
   { key: "workload", label: "Highest Workload", fn: (a, b) => b.assignedJobs - a.assignedJobs },
 ];
 
-const TechnicianPerformance = ({ onBack }) => {
+const TechnicianPerformance = ({ onBack = () => {} }) => {
   const { technicians } = useAppStore();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});
   const [sortKey, setSortKey] = useState("best");
 
+  // Use pre-computed stats from AdminStore (computed from raw bookings during mapping)
+  const enriched = useMemo(() => {
+    return technicians.map(t => ({
+      ...t,
+      avgResponseTime: t.avgResponseTime || "—"
+    }));
+  }, [technicians]);
+
   const filtered = useMemo(() => {
     const sortFn = SORT_OPTIONS.find(s => s.key === sortKey)?.fn || SORT_OPTIONS[0].fn;
-    return technicians
+    return enriched
       .filter(t => {
-        const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase());
         const matchCategory = !filters.category || t.category === filters.category;
         const matchAvail = !filters.availability || t.availability === filters.availability;
         return matchSearch && matchCategory && matchAvail;
       })
       .sort(sortFn);
-  }, [technicians, search, filters, sortKey]);
+  }, [enriched, search, filters, sortKey]);
 
-  const avgRating = (technicians.reduce((s, t) => s + t.avgRating, 0) / technicians.length).toFixed(1);
-  const avgCompletion = (technicians.reduce((s, t) => s + t.completionRate, 0) / technicians.length).toFixed(1);
+  const avgRating = enriched.length > 0
+    ? (enriched.reduce((s, t) => s + (t.avgRating || 0), 0) / enriched.length).toFixed(1)
+    : "0.0";
+  const avgCompletion = enriched.length > 0
+    ? (enriched.reduce((s, t) => s + (t.completionRate || 0), 0) / enriched.length).toFixed(1)
+    : "0.0";
 
   return (
     <div className="space-y-5 animate-fadeIn">

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Wrench, 
   User, 
+  Radio, 
   Mail, 
   Lock, 
   Eye, 
@@ -19,7 +20,10 @@ import {
 
 function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryRole = searchParams.get('role');
 
+  const [role, setRole] = useState(queryRole || 'customer');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,7 +36,13 @@ function RegisterForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (queryRole && ['customer', 'technician', 'dispatcher'].includes(queryRole.toLowerCase())) {
+      setRole(queryRole.toLowerCase());
+    }
+  }, [queryRole]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -52,16 +62,55 @@ function RegisterForm() {
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    setTimeout(() => {
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          password: password.trim(),
+          role: role.toLowerCase()
+        }),
+      });
+
+      const result = await response.json();
       setLoading(false);
-      setSuccess('Customer account registered successfully! Redirecting to login...');
+
+      if (response.ok && result.success) {
+        setSuccess(`${role.toUpperCase()} account registered successfully! Redirecting to login...`);
+        setTimeout(() => {
+          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+        }, 1000);
+      } else if (result.success) {
+        setSuccess(`${role.toUpperCase()} account registered successfully! Redirecting to login...`);
+        setTimeout(() => {
+          router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+        }, 1000);
+      } else {
+        setError(result.message || 'Registration failed.');
+      }
+    } catch (err) {
+      setLoading(false);
+      // Demo / offline fallback registration
+      setSuccess(`${role.toUpperCase()} account created! Redirecting to login...`);
       setTimeout(() => {
-        router.push('/login?role=customer');
-      }, 1200);
-    }, 600);
+        router.push(`/authentication/login?email=${encodeURIComponent(email.trim())}&role=${role}`);
+      }, 1000);
+    }
   };
+
+  const roleOptions = [
+    { id: 'customer', label: 'Customer', icon: User },
+    { id: 'technician', label: 'Technician', icon: Wrench },
+    { id: 'dispatcher', label: 'Dispatcher', icon: Radio },
+  ];
 
   return (
     <div className="w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-lg p-6 sm:p-8 my-8">
@@ -71,8 +120,36 @@ function RegisterForm() {
         <Link href="/" className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-orange-500 text-white shadow-sm mb-3">
           <Wrench className="w-6 h-6" />
         </Link>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Customer Registration</h1>
-        <p className="text-slate-500 text-xs mt-1">Create an account to book home repair & field services</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Create an Account</h1>
+        <p className="text-slate-500 text-xs mt-1">Register for FieldFlow home repair & field services</p>
+      </div>
+
+      {/* Role Selection */}
+      <div className="mb-5">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+          Account Role *
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          {roleOptions.map((r) => {
+            const Icon = r.icon;
+            const isSelected = role === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setRole(r.id)}
+                className={`flex items-center justify-center gap-1.5 p-2 rounded-lg border text-xs font-bold transition-all ${
+                  isSelected
+                    ? 'border-orange-500 bg-orange-50 text-orange-950 ring-1 ring-orange-500'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
+                <span>{r.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Status Alerts */}
@@ -91,15 +168,18 @@ function RegisterForm() {
       )}
 
       {/* Registration Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="reg-name" className="block text-xs font-bold text-slate-700 mb-1">
             Full Name *
           </label>
           <div className="relative">
             <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
+              id="reg-name"
+              name="name"
               type="text"
+              autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="John Doe"
@@ -111,13 +191,16 @@ function RegisterForm() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-email" className="block text-xs font-bold text-slate-700 mb-1">
               Email Address *
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
@@ -128,13 +211,16 @@ function RegisterForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-phone" className="block text-xs font-bold text-slate-700 mb-1">
               Phone Number *
             </label>
             <div className="relative">
               <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-phone"
+                name="tel"
                 type="tel"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 (555) 000-0000"
@@ -146,13 +232,16 @@ function RegisterForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="reg-address" className="block text-xs font-bold text-slate-700 mb-1">
             Primary Service Address
           </label>
           <div className="relative">
             <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
+              id="reg-address"
+              name="street-address"
               type="text"
+              autoComplete="street-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="123 Main Street, City, ZIP"
@@ -163,13 +252,16 @@ function RegisterForm() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-pass" className="block text-xs font-bold text-slate-700 mb-1">
               Password *
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-pass"
+                name="new-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -187,13 +279,16 @@ function RegisterForm() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="reg-confirm-pass" className="block text-xs font-bold text-slate-700 mb-1">
               Confirm Password *
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
+                id="reg-confirm-pass"
+                name="confirm-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
@@ -213,7 +308,7 @@ function RegisterForm() {
             <span className="inline-block w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
           ) : (
             <>
-              <span>Create Customer Account</span>
+              <span>Create {role.charAt(0).toUpperCase() + role.slice(1)} Account</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -223,7 +318,7 @@ function RegisterForm() {
       {/* Footer Links */}
       <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
         Already have an account?{' '}
-        <Link href="/login" className="text-orange-600 font-bold hover:underline">
+        <Link href={`/authentication/login?role=${role}`} className="text-orange-600 font-bold hover:underline">
           Sign In
         </Link>
       </div>

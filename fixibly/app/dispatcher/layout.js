@@ -1,10 +1,16 @@
+
 "use client";
 
+import { useEffect } from 'react';
+import { DispatcherStoreProvider } from './DispatcherStore';
+
 export default function DispatcherRouteLayout({ children }) {
-  return (
-    <>
-      <div className="min-h-screen bg-gray-50 text-gray-900">{children}</div>
-      <style jsx global>{`
+  useEffect(() => {
+    const styleId = 'ff-custom-styles';
+    if (!document.getElementById(styleId)) {
+      const tag = document.createElement('style');
+      tag.id = styleId;
+      tag.innerHTML = `
         .ff-card {
           background: #ffffff;
           border-radius: 0.875rem;
@@ -82,7 +88,19 @@ export default function DispatcherRouteLayout({ children }) {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeIn { animation: fadeIn 0.22s ease both; }
-      `}</style>
-    </>
+      `;
+      document.head.appendChild(tag);
+    }
+  }, []);
+
+  return (
+    <DispatcherStoreProvider>
+      <div className="min-h-screen bg-gray-50 text-gray-900">
+        {children}
+      </div>
+    </DispatcherStoreProvider>
   );
 }
+
+
+

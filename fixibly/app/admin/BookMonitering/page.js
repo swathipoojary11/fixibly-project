@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useAdminStore as useAppStore } from "../AdminStore";
 import BookingTable from "../../components/admin/BookingTable";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import FilterBar from "../../components/dispatcher-admin/FilterBar";
@@ -10,7 +10,7 @@ import { FiCalendar, FiX, FiUser, FiMapPin, FiPhone, FiTag, FiClock, FiArrowLeft
 
 const STATUS_TABS = ["All", "Pending", "Assigned", "On The Way", "In Progress", "Completed", "Cancelled", "Delayed"];
 
-const BookingMonitoring = ({ onBack }) => {
+const BookingMonitoring = ({ onBack = () => {} }) => {
   const { bookings, emergencies } = useAppStore();
   const allBookings = useMemo(() => [...bookings, ...emergencies], [bookings, emergencies]);
 

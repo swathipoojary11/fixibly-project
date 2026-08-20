@@ -1,4 +1,4 @@
-// app/categories/page.js
+// app/customercategories/page.js
 import Navbar from "@/app/components/navbar";
 import CategorySection from "./categorySection";
 import Footer from "@/app/components/footer";

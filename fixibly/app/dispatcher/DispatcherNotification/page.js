@@ -1,18 +1,18 @@
 "use client";
 import React, { useState } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import NotificationCard from "../../components/admin/NotificationCard";
 import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiBell, FiCheckCircle, FiArrowLeft } from "react-icons/fi";
 
 const TABS = ["All", "Unread", "Read"];
 
-const DispatcherNotifications = ({ onBack }) => {
-  const { dispNotifs, setDispNotifs } = useAppStore();
+const DispatcherNotifications = ({ onBack = () => {} }) => {
+  const { dispNotifs, setDispNotifs, markNotifsReadAsync } = useAppStore();
   const [tab, setTab] = useState("All");
 
   const markRead = (id) => setDispNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
-  const markAllRead = () => setDispNotifs(n => n.map(x => ({ ...x, read: true })));
+  const markAllRead = () => { if (markNotifsReadAsync) { markNotifsReadAsync(); } else { setDispNotifs(n => n.map(x => ({ ...x, read: true }))); } };
 
   const filtered = dispNotifs.filter(n => tab === "All" || (tab === "Unread" ? !n.read : n.read));
   const unreadCount = dispNotifs.filter(n => !n.read).length;

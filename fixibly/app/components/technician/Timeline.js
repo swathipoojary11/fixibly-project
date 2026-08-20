@@ -1,37 +1,39 @@
 import React from "react";
-import { MdAccessTime } from "react-icons/md";
+import { Clock } from "lucide-react";
 
 function Timeline({ timeline }) {
-  const items = (timeline || [{ time: "10:30 AM", task: "AC Repair at MG Road" }]).slice(0, 1);
+  const items = Array.isArray(timeline) && timeline.length > 0 ? timeline.slice(0, 4) : [];
 
   return (
-    <div className="rounded-none bg-white border border-[#ECECEC] shadow-sm p-7">
-      <div className="flex items-center justify-between pb-4 border-b border-[#ECECEC] mb-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-none bg-[#FFF3EE] text-[#F54C0F] flex items-center justify-center">
-            <MdAccessTime size={22} />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-[#202020]">Today's Schedule</h3>
-            <p className="text-xs text-[#7B7B7B]">Field timeline & dispatch agenda</p>
-          </div>
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+          <Clock size={20} />
         </div>
-        <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#F54C0F] bg-[#FFF3EE] px-3 py-1 rounded-none border border-[#F54C0F]/20">
-          Live Agenda
-        </span>
+        <div>
+          <h3 className="text-base font-bold text-gray-900">Today's Schedule</h3>
+          <p className="text-xs text-gray-500">Upcoming field workload</p>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {items.map((item, index) => (
-          <div key={index} className="flex items-center gap-4">
-            <div className="min-w-[4.5rem] rounded-none bg-[#FFF3EE] border border-[#F54C0F]/20 px-3 py-2 text-center text-xs font-bold text-[#F54C0F]">
-              {item.time}
-            </div>
-            <div className="flex-1 rounded-none border border-[#ECECEC] bg-[#F7F7F7] p-3 text-xs font-bold text-[#202020]">
-              {item.task}
-            </div>
+      <div className="space-y-3">
+        {items.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <Clock size={32} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm text-gray-500">No jobs scheduled right now</p>
           </div>
-        ))}
+        ) : (
+          items.map((item, index) => (
+            <div key={index} className="flex items-center gap-3">
+              <span className="bg-orange-50 text-orange-600 border border-orange-100 text-xs font-bold px-3 py-1.5 rounded-xl shrink-0 min-w-[4rem] text-center">
+                {item.time}
+              </span>
+              <span className="flex-1 bg-gray-50 border border-gray-100 text-gray-700 text-xs font-medium px-3 py-2 rounded-xl truncate">
+                {item.task}
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

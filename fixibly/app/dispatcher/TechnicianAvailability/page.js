@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { useAppStore } from "../../context/AppStore";
+import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import StatusBadge from "../../components/dispatcher-admin/StatusBadge";
 import SearchBar from "../../components/dispatcher-admin/SearchBar";
 import FilterBar from "../../components/dispatcher-admin/FilterBar";
@@ -8,7 +8,7 @@ import EmptyState from "../../components/dispatcher-admin/EmptyState";
 import { FiUsers, FiStar, FiClock, FiX, FiPhone, FiMail, FiArrowLeft } from "react-icons/fi";
 import Portal from "../../components/dispatcher-admin/Portal";
 
-const TechnicianAvailability = ({ onBack }) => {
+const TechnicianAvailability = ({ onBack = () => {} }) => {
   const { technicians } = useAppStore();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({});
@@ -16,7 +16,7 @@ const TechnicianAvailability = ({ onBack }) => {
 
   const filtered = useMemo(() => {
     return technicians.filter(t => {
-      const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || String(t.id).includes(search);
       const matchSkill = !filters.skill || t.category === filters.skill;
       const matchAvail = !filters.availability || t.availability === filters.availability;
       return matchSearch && matchSkill && matchAvail;

@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect } from 'react';
+import { AdminStoreProvider } from './AdminStore';
+
 export default function AdminRouteLayout({ children }) {
-  return (
-    <>
-      <div className="min-h-screen bg-gray-50 text-gray-900">{children}</div>
-      <style global jsx>{`
+  useEffect(() => {
+    const styleId = 'ff-custom-styles';
+    if (!document.getElementById(styleId)) {
+      const tag = document.createElement('style');
+      tag.id = styleId;
+      tag.innerHTML = `
         .ff-card {
           background: #ffffff;
           border-radius: 0.875rem;
@@ -82,7 +87,20 @@ export default function AdminRouteLayout({ children }) {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeIn { animation: fadeIn 0.22s ease both; }
-      `}</style>
-    </>
+      `;
+      document.head.appendChild(tag);
+    }
+  }, []);
+
+  return (
+    <AdminStoreProvider>
+      <div className="min-h-screen bg-gray-50 text-gray-900">
+        {children}
+      </div>
+    </AdminStoreProvider>
   );
 }
+
+
+
+
