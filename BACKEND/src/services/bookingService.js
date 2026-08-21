@@ -1,5 +1,5 @@
 // backend/src/services/bookingService.js
-// Business logic wrapper for booking calculations, cancellations, completions, and feedback.
+// Business logic wrapper for booking calculations, cancellations, completions, and feedback          .
 
 const bookingRepository = require('../repositories/bookingRepository');
 const serviceRepository = require('../repositories/serviceRepository');

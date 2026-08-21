@@ -1,16 +1,16 @@
 const validateBooking = (req, res, next) => {
 
     const {
-        customer_id,
-        category_id,
-        problem_id,
-        issue_description,
-        emergency_flag,
-        emergency_reason,
-        preferred_date,
-        preferred_time,
-        anytime_service,
-        house_number,
+        customerId,
+        categoryId,
+        problemId,
+        issueDescription,
+        emergencyFlag,
+        emergencyReason,
+        preferredDate,
+        preferredTime,
+        anytimeService,
+        houseNumber,
         street,
         area,
         city,
@@ -20,7 +20,7 @@ const validateBooking = (req, res, next) => {
 
 
     // Customer is required
-    if (!customer_id) {
+    if (!customerId) {
         return res.status(400).json({
             success: false,
             message: "Customer ID is required"
@@ -29,7 +29,7 @@ const validateBooking = (req, res, next) => {
 
 
     // Service category is required
-    if (!category_id) {
+    if (!categoryId) {
         return res.status(400).json({
             success: false,
             message: "Service category is required"
@@ -38,7 +38,7 @@ const validateBooking = (req, res, next) => {
 
 
     // Problem is required
-    if (!problem_id) {
+    if (!problemId && !req.body.isCustomProblem) {
         return res.status(400).json({
             success: false,
             message: "Problem is required"
@@ -47,7 +47,7 @@ const validateBooking = (req, res, next) => {
 
 
     // Issue description
-    if (!issue_description || issue_description.trim() === "") {
+    if (!issueDescription || issueDescription.trim() === "") {
         return res.status(400).json({
             success: false,
             message: "Issue description is required"
@@ -56,7 +56,7 @@ const validateBooking = (req, res, next) => {
 
 
     // Emergency must be boolean
-    if (typeof emergency_flag !== "boolean") {
+    if (typeof emergencyFlag !== "boolean") {
         return res.status(400).json({
             success: false,
             message: "Emergency flag must be true or false"
@@ -66,8 +66,8 @@ const validateBooking = (req, res, next) => {
 
     // Emergency reason required only for emergency booking
     if (
-        emergency_flag === true &&
-        (!emergency_reason || emergency_reason.trim() === "")
+        emergencyFlag === true &&
+        (!emergencyReason || emergencyReason.trim() === "")
     ) {
         return res.status(400).json({
             success: false,
@@ -77,16 +77,16 @@ const validateBooking = (req, res, next) => {
 
 
     // Date/time required unless anytime service
-    if (!anytime_service) {
+    if (!anytimeService) {
 
-        if (!preferred_date) {
+        if (!preferredDate) {
             return res.status(400).json({
                 success: false,
                 message: "Preferred date is required"
             });
         }
 
-        if (!preferred_time) {
+        if (!preferredTime) {
             return res.status(400).json({
                 success: false,
                 message: "Preferred time is required"
@@ -96,7 +96,7 @@ const validateBooking = (req, res, next) => {
 
 
     // Address validation
-    if (!house_number) {
+    if (!houseNumber) {
         return res.status(400).json({
             success: false,
             message: "House number is required"
@@ -124,12 +124,12 @@ const validateBooking = (req, res, next) => {
         });
     }
 
-    if (!state) {
-        return res.status(400).json({
-            success: false,
-            message: "State is required"
-        });
-    }
+    // if (!state) {
+    //     return res.status(400).json({
+    //         success: false,
+    //         message: "State is required"
+    //     });
+    // }
 
     if (!pincode) {
         return res.status(400).json({
