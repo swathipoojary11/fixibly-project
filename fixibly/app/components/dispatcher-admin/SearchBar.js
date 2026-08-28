@@ -11,7 +11,7 @@ const SearchBar = ({ value, onChange, placeholder = "Search...", className = "" 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="ff-input !pl-9 pr-8 w-full bg-white"
+        className="ff-input !pl-10 !pr-10 w-full bg-white"
       />
       {value && (
         <button onClick={() => onChange("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">

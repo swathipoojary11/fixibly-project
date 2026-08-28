@@ -122,7 +122,7 @@ const getNotifications = async (req, res) => {
   try {
     let query = supabaseAdmin
       .from('notifications')
-      .select('*')
+      .select('*, bookings(issue_description, service_problems(problem_name))')
       .or(buildNotifFilter(role, userId))
       .order('created_at', { ascending: false })
       .limit(100);
@@ -142,7 +142,14 @@ const getNotifications = async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    return res.status(200).json({ success: true, notifications: data });
+    const notifications = (data || []).map(notification => ({
+      ...notification,
+      issue: notification.bookings?.service_problems?.problem_name
+        || notification.bookings?.issue_description
+        || null
+    }));
+
+    return res.status(200).json({ success: true, notifications });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

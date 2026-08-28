@@ -158,7 +158,7 @@ const Dashboard = ({ onNavigate = () => {} }) => {
             </div>
 
             {/* Technician Workload */}
-            <button className="ff-card p-5 w-full text-left cursor-pointer hover:border-orange-200 transition-all" onClick={() => onNavigate("technicians")}>
+            {/* <button className="ff-card p-5 w-full text-left cursor-pointer hover:border-orange-200 transition-all" onClick={() => onNavigate("technicians")}>
                 <p className="ff-section-title mb-4">Technician Workload <span className="text-xs font-normal text-gray-400 ml-1">(click to view details)</span></p>
                 <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={charts.technicianWorkload} barSize={20}>
@@ -171,7 +171,7 @@ const Dashboard = ({ onNavigate = () => {} }) => {
                         <Bar dataKey="completed" name="Completed" fill="#22C55E" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
-            </button>
+            </button> */}
             <Footer></Footer>
         </div>
     );
