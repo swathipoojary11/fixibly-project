@@ -49,7 +49,7 @@ const mapBooking = b => ({
     pincode: b.pincode || '',
     createdAt: b.created_at || b.createdAt,
     scheduledAt: (!b.preferred_date || b.anytime_service) ? null : `${b.preferred_date}${b.preferred_time ? 'T' + b.preferred_time : ''}`,
-    issue: b.issue_description || b.description || b.issue || '',
+    issue: b.issue || b.service_problems?.problem_name || b.service_problems?.[0]?.problem_name || b.issue_description || b.description || '',
     cancelledBy: b.cancelled_by ? 'Customer' : null,
     cancelledAt: b.cancelled_at || b.updated_at,
     reason: b.cancellation_reason || 'No reason provided',
