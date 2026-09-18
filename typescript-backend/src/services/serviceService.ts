@@ -1,17 +1,20 @@
 const serviceRepository = require('../repositories/serviceRepository');
-
-const fetchServiceCategories = async () => {
+type IdType = string | number;
+export const fetchServiceCategories = async () => {
   const categories = await serviceRepository.getAllActiveCategories();
   return categories || [];
 };
 
-const fetchProblemsByCategory = async (categoryId) => {
-  if (!categoryId) throw new Error('CATEGORY_ID_REQUIRED');
+export const fetchProblemsByCategory = async (categoryId: IdType) => {
+  // Guard clause: ensure categoryId exists
+  if (!categoryId) {
+    throw new Error('CATEGORY_ID_REQUIRED');
+  }
+
   const problems = await serviceRepository.getProblemsByCategoryId(categoryId);
   return problems || [];
 };
-
 module.exports = {
   fetchServiceCategories,
   fetchProblemsByCategory
-};
+};
