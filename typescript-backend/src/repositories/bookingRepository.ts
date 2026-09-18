@@ -2,11 +2,49 @@
 // Supabase database repository handling all Customer Module table queries.
 
 const supabase = require('../config/supabase');
+type IdType = string | number;
+
+type BookingData = {
+  customerId: IdType;
+  categoryId: IdType;
+  problemId?: IdType | null;
+  issueDescription?: string | null;
+  customProblemDescription?: string | null;
+  emergencyFlag?: boolean;
+  emergencyReason?: string | null;
+  preferredDate?: string | null;
+  preferredTime?: string | null;
+  anytimeService?: boolean;
+  houseNumber?: string | null;
+  apartmentName?: string | null;
+  street?: string;
+  area?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  estimatedAmount?: number | null;
+  advanceAmount?: number;
+};
+
+type FeedbackData = {
+  technicianId?: IdType | null;
+  overallRating: number | string;
+  professionalBehaviour: number | string;
+  serviceQuality: number | string;
+  timeliness: number | string;
+  cleanliness: number | string;
+  problemResolution: number | string;
+  comments?: string;
+};
+
+type DbError = {
+  message?: string;
+};
+
 
 class BookingRepository {
   // Fetch user profile from 'users' table using user_id
-  async getUserProfile(userId) {
-    // Querying the users table to get logged-in customer contact info
+  async getUserProfile(userId: IdType | undefined) {
     const { data, error } = await supabase
       .from('users')
       .select('user_id, full_name, email, phone, address')
@@ -21,7 +59,7 @@ class BookingRepository {
   }
 
   // Fetch service category by category_id
-  async getCategoryById(categoryId) {
+  async getCategoryById(categoryId: IdType) {
     // Querying service_categories table for category name and image URL
     const { data, error } = await supabase
       .from('service_categories')
@@ -37,9 +75,9 @@ class BookingRepository {
   }
 
   // Fetch single service problem by problem_id
-  async getProblemById(problemId) {
+ async getProblemById(problemId: IdType | null | undefined) {
     if (!problemId) return null;
-    // Querying service_problems table to fetch fixed price
+
     const { data, error } = await supabase
       .from('service_problems')
       .select('problem_id, problem_name, fixed_price')
@@ -51,8 +89,7 @@ class BookingRepository {
   }
 
   // Fetch active predefined problems for a specific category
-  async getCategoryProblems(categoryId) {
-    // Querying service_problems table for active problems under this category
+async getCategoryProblems(categoryId: IdType) {
     const { data, error } = await supabase
       .from('service_problems')
       .select('problem_id, problem_name, fixed_price')
@@ -67,7 +104,7 @@ class BookingRepository {
   }
 
   // Fetch Customer Dashboard Overview (User profile, booking stats, unread notifications count, categories)
-  async getCustomerDashboard(userId) {
+  async getCustomerDashboard(userId: IdType | undefined) {
     // 1. Fetching customer user details
     const user = await this.getUserProfile(userId);
 
@@ -86,17 +123,20 @@ class BookingRepository {
       console.error('Error fetching dashboard bookings:', bookingsError.message);
     }
 
-    const allBookings = bookings || [];
+   // Default to empty array if query returned null
+    const allBookings: any[] = bookings || [];
 
     // Calculating status counts
-    const totalBookings = allBookings.length;
-    const pendingBookings = allBookings.filter(b => b.booking_status === 'Pending').length;
-    const activeBookings = allBookings.filter(b => ['Assigned', 'Accepted', 'On The Way', 'Arrived', 'Working', 'Waiting for Customer Confirmation'].includes(b.booking_status)).length;
-    const completedBookings = allBookings.filter(b => b.booking_status === 'Completed').length;
-    const cancelledBookings = allBookings.filter(b => b.booking_status === 'Cancelled').length;
+  const totalBookings: number = allBookings.length;
+    const pendingBookings: number = allBookings.filter(b => b.booking_status === 'Pending').length;
+    const activeBookings: number = allBookings.filter(b =>
+      ['Assigned', 'Accepted', 'On The Way', 'Arrived', 'Working', 'Waiting for Customer Confirmation'].includes(b.booking_status)
+    ).length;
+    const completedBookings: number = allBookings.filter(b => b.booking_status === 'Completed').length;
+    const cancelledBookings: number = allBookings.filter(b => b.booking_status === 'Cancelled').length;
 
     // Last 3 bookings preview for dashboard
-    const historyPreview = allBookings.slice(0, 3);
+    const historyPreview: any[] = allBookings.slice(0, 3);
 
     // 3. Counting unread notifications for the logged-in customer
     const { count: unreadCount } = await supabase
@@ -129,10 +169,10 @@ class BookingRepository {
   }
 
   // Create new booking with history, notifications, and activity log entries
-  async createBookingTransaction(bookingData) {
-    const isEmergency = Boolean(bookingData.emergencyFlag);
+ async createBookingTransaction(bookingData: BookingData) {
+    const isEmergency: boolean = Boolean(bookingData.emergencyFlag);
 
-    // Sanitizing preferred_date and preferred_time to convert empty strings to null (prevents PostgreSQL DATE/TIME casting errors)
+// Sanitizing date & time values
     const preferredDate = (bookingData.preferredDate && String(bookingData.preferredDate).trim() !== '')
       ? bookingData.preferredDate
       : null;
@@ -145,7 +185,6 @@ class BookingRepository {
       ? Number(bookingData.problemId)
       : null;
 
-    // Sanitizing issue description text
     const issueDescription = bookingData.issueDescription || bookingData.customProblemDescription || null;
 
     // Sanitizing address text fields
@@ -157,16 +196,16 @@ class BookingRepository {
     const state = bookingData.state || 'Karnataka';
     const pincode = bookingData.pincode || '';
 
-    // Slicing string fields to max safe length (95 chars) to prevent "value too long for type character varying(100)" database errors
-    const safeStreet = String(street).substring(0, 95);
-    const safeArea = String(area).substring(0, 95);
-    const safeCity = String(city).substring(0, 95);
-    const safeState = String(state).substring(0, 95);
-    const safePincode = String(pincode).substring(0, 10);
-    const safeIssueDescription = issueDescription ? String(issueDescription).substring(0, 95) : null;
-    const safeEmergencyReason = (isEmergency && bookingData.emergencyReason) ? String(bookingData.emergencyReason).substring(0, 95) : null;
-    const safeHouseNumber = houseNumber ? String(houseNumber).substring(0, 50) : null;
-    const safeApartmentName = apartmentName ? String(apartmentName).substring(0, 95) : null;
+// Safe length cuts to avoid Postgres VARCHAR limits
+    const safeStreet: string = String(street).substring(0, 95);
+    const safeArea: string = String(area).substring(0, 95);
+    const safeCity: string = String(city).substring(0, 95);
+    const safeState: string = String(state).substring(0, 95);
+    const safePincode: string = String(pincode).substring(0, 10);
+    const safeIssueDescription: string | null = issueDescription ? String(issueDescription).substring(0, 95) : null;
+    const safeEmergencyReason: string | null = (isEmergency && bookingData.emergencyReason) ? String(bookingData.emergencyReason).substring(0, 95) : null;
+    const safeHouseNumber: string | null = houseNumber ? String(houseNumber).substring(0, 50) : null;
+    const safeApartmentName: string | null = apartmentName ? String(apartmentName).substring(0, 95) : null;
 
     // 1. Inserting primary record into 'bookings' table
     const { data: booking, error: bookingError } = await supabase
@@ -202,19 +241,19 @@ class BookingRepository {
       throw new Error(`Booking Creation Failed: ${bookingError.message}`);
     }
 
-    const bookingId = booking.booking_id;
+const bookingId: IdType = booking.booking_id;
 
     // 2. Logging initial 'Pending' status into 'booking_status_history' table
-    await supabase.from('booking_status_history').insert([
+await supabase.from('booking_status_history').insert([
       { booking_id: bookingId, status: 'Pending' }
     ]);
-
-    // 3. Recording Advance Payment in 'payments' table if emergency booking
-    if (isEmergency && bookingData.advanceAmount > 0) {
+// 3. Recording Advance Payment in 'payments' table if emergency booking
+    const advanceAmount = Number(bookingData.advanceAmount) || 0;
+    if (isEmergency && advanceAmount > 0) {
       await supabase.from('payments').insert([
         {
           booking_id: bookingId,
-          amount: bookingData.advanceAmount,
+          amount: advanceAmount,
           payment_status: 'Successful',
           payment_type: 'Advance'
         }
@@ -222,7 +261,7 @@ class BookingRepository {
     }
 
     // 4. Sending new service request notification to Dispatchers in 'notifications' table
-    await supabase.from('notifications').insert([
+await supabase.from('notifications').insert([
       {
         booking_id: bookingId,
         title: isEmergency ? '🚨 Emergency Booking Request' : 'New Service Booking',
@@ -234,7 +273,7 @@ class BookingRepository {
     ]);
 
     // 5. Recording audit trail entry in 'activity_logs' table
-    await supabase.from('activity_logs').insert([
+ await supabase.from('activity_logs').insert([
       {
         user_id: bookingData.customerId,
         booking_id: bookingId,
@@ -247,8 +286,8 @@ class BookingRepository {
   }
 
   // Fetch Booking Details by ID with category, problem, and assigned technician profile
-  async getBookingDetailsById(bookingId) {
-    // Querying bookings table with foreign key relations to service_categories, service_problems, and technicians
+
+async getBookingDetailsById(bookingId: IdType) {
     const { data: booking, error } = await supabase
       .from('bookings')
       .select(`
@@ -275,19 +314,16 @@ class BookingRepository {
   }
 
   // Fetch Live Tracking timeline history and technician location
-  async getBookingTrackingDetails(bookingId) {
-    // 1. Fetching booking details
+async getBookingTrackingDetails(bookingId: IdType) {
     const booking = await this.getBookingDetailsById(bookingId);
     if (!booking) return null;
 
-    // 2. Fetching status updates history from 'booking_status_history' table
     const { data: statusHistory } = await supabase
       .from('booking_status_history')
       .select('*')
       .eq('booking_id', bookingId)
       .order('status_history_id', { ascending: true });
 
-    // 3. Fetching assigned technician's live coordinates from 'technician_locations' table
     let technicianLocation = null;
     if (booking.technician_id) {
       const { data: loc } = await supabase
@@ -307,7 +343,7 @@ class BookingRepository {
   }
 
   // Cancel Booking with 40-minute ETA window rule enforcement
-  async cancelBookingById(bookingId, userId, cancellationReason) {
+async cancelBookingById(bookingId: IdType, userId: IdType | undefined, cancellationReason?: string) {
     const booking = await this.getBookingDetailsById(bookingId);
     if (!booking) {
       throw new Error('BOOKING_NOT_FOUND');
@@ -319,17 +355,16 @@ class BookingRepository {
 
     // Checking if technician estimated arrival is within 40 minutes
     if (booking.estimated_arrival) {
-      const etaTime = new Date(booking.estimated_arrival).getTime();
-      const currentTime = new Date().getTime();
-      const diffMinutes = (etaTime - currentTime) / (1000 * 60);
+      const etaTime: number = new Date(booking.estimated_arrival).getTime();
+      const currentTime: number = new Date().getTime();
+      const diffMinutes: number = (etaTime - currentTime) / (1000 * 60);
 
       if (diffMinutes >= 0 && diffMinutes <= 40) {
         throw new Error('ETA_WITHIN_40_MINUTES');
       }
     }
 
-    const safeReason = cancellationReason ? String(cancellationReason).substring(0, 95) : 'Cancelled by customer';
-
+    const safeReason: string = cancellationReason ? String(cancellationReason).substring(0, 95) : 'Cancelled by customer';
     // Updating booking status to Cancelled in 'bookings' table
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
@@ -393,13 +428,12 @@ class BookingRepository {
   }
 
   // STEP 2: Customer Job Completion Handshake (Sets status = Completed, customer_completed_flag = true, unlocks technician completion)
-  async completeBookingById(bookingId, userId) {
+ async completeBookingById(bookingId: IdType, userId: IdType | undefined) {
     const booking = await this.getBookingDetailsById(bookingId);
     if (!booking) {
       throw new Error('BOOKING_NOT_FOUND');
     }
 
-    // Updating booking flags & status to Completed in 'bookings' table
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
@@ -412,16 +446,15 @@ class BookingRepository {
       .single();
 
     if (updateError) {
-      console.error('Error marking booking completed:', updateError.message);
+      const err = updateError as DbError;
+      console.error('Error marking booking completed:', err.message);
       throw updateError;
     }
 
-    // Logging 'Completed' in 'booking_status_history' table
     await supabase.from('booking_status_history').insert([
       { booking_id: bookingId, status: 'Completed' }
     ]);
 
-    // Resetting technician availability status back to 'Available' in 'technicians' table
     if (booking.technician_id) {
       await supabase
         .from('technicians')
@@ -429,7 +462,6 @@ class BookingRepository {
         .eq('technician_id', booking.technician_id);
     }
 
-    // Sending completion notifications to Dispatcher and Technician
     await supabase.from('notifications').insert([
       {
         booking_id: bookingId,
@@ -441,7 +473,6 @@ class BookingRepository {
       }
     ]);
 
-    // Logging activity trail entry
     await supabase.from('activity_logs').insert([
       {
         user_id: userId,
@@ -453,29 +484,16 @@ class BookingRepository {
 
     return updatedBooking;
   }
-
   // STEP 4: Submit Technician Feedback, trigger Dispatcher Notification, and recalculate technician average rating
-  async submitFeedback(bookingId, customerId, feedbackData) {
+  async submitFeedback(bookingId: IdType, customerId: IdType | undefined, feedbackData: FeedbackData) {
     const booking = await this.getBookingDetailsById(bookingId);
     if (!booking) {
       throw new Error('BOOKING_NOT_FOUND');
     }
 
     const technicianId = booking.technician_id || feedbackData.technicianId || null;
+    const safeComments = feedbackData.comments ? String(feedbackData.comments).substring(0, 95) : '';
 
-    const {
-      overallRating,
-      professionalBehaviour,
-      serviceQuality,
-      timeliness,
-      cleanliness,
-      problemResolution,
-      comments
-    } = feedbackData;
-
-    const safeComments = comments ? String(comments).substring(0, 95) : '';
-
-    // 1. Inserting feedback ratings into 'feedback' table
     const { data: feedback, error: feedbackError } = await supabase
       .from('feedback')
       .insert([
@@ -483,12 +501,12 @@ class BookingRepository {
           booking_id: bookingId,
           customer_id: customerId,
           technician_id: technicianId,
-          overall_rating: parseInt(overallRating) || 5,
-          professional_behaviour: parseInt(professionalBehaviour) || 5,
-          service_quality: parseInt(serviceQuality) || 5,
-          timeliness: parseInt(timeliness) || 5,
-          cleanliness: parseInt(cleanliness) || 5,
-          problem_resolution: parseInt(problemResolution) || 5,
+          overall_rating: Number(feedbackData.overallRating) || 5,
+          professional_behaviour: Number(feedbackData.professionalBehaviour) || 5,
+          service_quality: Number(feedbackData.serviceQuality) || 5,
+          timeliness: Number(feedbackData.timeliness) || 5,
+          cleanliness: Number(feedbackData.cleanliness) || 5,
+          problem_resolution: Number(feedbackData.problemResolution) || 5,
           comments: safeComments
         }
       ])
@@ -496,23 +514,22 @@ class BookingRepository {
       .single();
 
     if (feedbackError) {
-      console.error('Error submitting feedback:', feedbackError.message);
+      const err = feedbackError as DbError;
+      console.error('Error submitting feedback:', err.message);
       throw feedbackError;
     }
 
-    // 2. TRIGGERING NOTIFICATION ENTRY FOR DISPATCHER IN 'notifications' TABLE
     await supabase.from('notifications').insert([
       {
         booking_id: bookingId,
         title: '⭐ Technician Feedback Received',
-        description: `Customer submitted a ${overallRating}-star rating for booking #${bookingId}.`.substring(0, 95),
+        description: `Customer submitted a ${feedbackData.overallRating}-star rating for booking #${bookingId}.`.substring(0, 95),
         notification_type: 'Feedback',
         priority: 'Low',
         recipient_role: 'DISPATCHER'
       }
     ]);
 
-    // 3. Recalculating average rating for assigned technician in 'technicians' table if assigned
     if (technicianId) {
       const { data: allTechFeedback } = await supabase
         .from('feedback')
@@ -520,7 +537,7 @@ class BookingRepository {
         .eq('technician_id', technicianId);
 
       if (allTechFeedback && allTechFeedback.length > 0) {
-        const sum = allTechFeedback.reduce((acc, item) => acc + item.overall_rating, 0);
+        const sum = allTechFeedback.reduce((acc: number, item: any) => acc + item.overall_rating, 0);
         const avgRating = parseFloat((sum / allTechFeedback.length).toFixed(1));
 
         await supabase
@@ -533,8 +550,8 @@ class BookingRepository {
     return feedback;
   }
 
-  // Submit General Platform / App Feedback into 'app_feedback' table
-  async submitAppFeedback(customerId, rating, comments) {
+  // Submit General Platform Feedback
+  async submitAppFeedback(customerId: IdType | undefined, rating: number | string, comments?: string) {
     const safeComments = comments ? String(comments).substring(0, 95) : '';
     const { data, error } = await supabase
       .from('app_feedback')
@@ -542,7 +559,7 @@ class BookingRepository {
         [
           {
             customer_id: customerId,
-            rating: parseInt(rating) || 5,
+            rating: Number(rating) || 5,
             comments: safeComments
           }
         ],
@@ -552,15 +569,15 @@ class BookingRepository {
       .single();
 
     if (error) {
-      console.error('Error in submitAppFeedback:', error.message);
+      const err = error as DbError;
+      console.error('Error in submitAppFeedback:', err.message);
       throw error;
     }
     return data;
   }
 
-  // Fetch Complete Booking History for customer (Confirmed/Active, Completed, Cancelled)
-  async getCustomerHistory(userId) {
-    // Querying all bookings for the customer sorted by booking_id DESC
+  // Fetch Complete Booking History for customer
+  async getCustomerHistory(userId: IdType | undefined) {
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -584,8 +601,7 @@ class BookingRepository {
   }
 
   // Fetch notifications list for logged-in customer
-  async getCustomerNotifications(userId) {
-    // Querying notifications table for user_id or recipient_role = CUSTOMER
+  async getCustomerNotifications(userId: IdType | undefined) {
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -599,8 +615,8 @@ class BookingRepository {
     return data || [];
   }
 
-  // Mark specific notification as read (is_read = true)
-  async markNotificationAsRead(notificationId, userId) {
+  // Mark specific notification as read
+  async markNotificationAsRead(notificationId: IdType, userId?: IdType) {
     const { data, error } = await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -609,11 +625,15 @@ class BookingRepository {
       .single();
 
     if (error) {
-      console.error('Error marking notification read:', error.message);
+      const err = error as DbError;
+      console.error('Error marking notification read:', err.message);
       throw error;
     }
     return data;
   }
 }
 
-module.exports = new BookingRepository();
+// module.exports = new BookingRepository();
+
+const bookingRepository = new BookingRepository();
+export default bookingRepository;
