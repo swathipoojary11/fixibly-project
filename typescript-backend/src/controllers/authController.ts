@@ -1,33 +1,46 @@
+import { Request, Response } from "express";
+
 const supabase = require("../config/supabase");
 const { hashPassword, comparePassword } = require("../utils/hashPassword");
 const { generateToken } = require("../utils/jwt");
+const { successResponse, errorResponse } = require("../utils/response");
 
-const {
-  successResponse,
-  errorResponse
-} = require("../utils/response");
+type RoleKey = "customer" | "technician" | "dispatcher" | "admin";
+
+type RegisterBody = {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  password?: string;
+  role?: string;
+};
+
+type LoginBody = {
+  email?: string;
+  password?: string;
+};
+
+type CustomError = {
+  message?: string;
+};
 
 // Register User
-const registerUser = async (req, res) => {
+export const registerUser = async (req: Request, res: Response) => {
   console.log("Register API called");
   console.log(req.body);
+
   try {
-    const {
-      full_name,
-      email,
-      phone,
-      address,
-      password,
-      role
-    } = req.body;
+    const body = req.body as RegisterBody;
+    const { full_name, email, phone, address, password, role } = body;
 
     // Validate required fields
     if (!full_name || !email || !password || !role) {
       return errorResponse(res, 400, "Please fill all required fields.");
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    const cleanEmail: string = email.trim().toLowerCase();
+    const cleanPassword: string = password.trim();
 
     // Check if email already exists
     const { data: existingUser } = await supabase
@@ -41,7 +54,7 @@ const registerUser = async (req, res) => {
     }
 
     // Get role_id (case-insensitive search with default role fallback)
-    let roleId = null;
+    let roleId: number | null = null;
     const { data: roleData } = await supabase
       .from("roles")
       .select("role_id")
@@ -51,13 +64,14 @@ const registerUser = async (req, res) => {
     if (roleData) {
       roleId = roleData.role_id;
     } else {
-      const roleMap = {
+      const roleMap: Record<RoleKey, number> = {
         customer: 1,
         technician: 2,
         dispatcher: 3,
         admin: 4
       };
-      roleId = roleMap[role.toLowerCase()] || 1;
+      const normalizedRole = role.toLowerCase() as RoleKey;
+      roleId = roleMap[normalizedRole] || 1;
     }
 
     // Encrypt password
@@ -83,24 +97,21 @@ const registerUser = async (req, res) => {
       return errorResponse(res, 500, error.message);
     }
 
-    return successResponse(
-      res,
-      201,
-      "Registration successful."
-    );
-
+    return successResponse(res, 201, "Registration successful.");
   } catch (err) {
-    res.status(500).json({
+    const error = err as CustomError;
+    return res.status(500).json({
       success: false,
-      message: err.message
+      message: error.message || "Internal server error"
     });
   }
 };
 
 // Login User
-const loginUser = async (req, res) => {
+export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const body = req.body as LoginBody;
+    const { email, password } = body;
 
     // Check required fields
     if (!email || !password) {
@@ -111,8 +122,8 @@ const loginUser = async (req, res) => {
       );
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
+    const cleanEmail: string = email.trim().toLowerCase();
+    const cleanPassword: string = password.trim();
 
     // Find user by email (case-insensitive search)
     const { data: user, error } = await supabase
@@ -130,7 +141,7 @@ const loginUser = async (req, res) => {
     }
 
     // Compare password
-    const isMatch = await comparePassword(cleanPassword, user.password_hash);
+    const isMatch: boolean = await comparePassword(cleanPassword, user.password_hash);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -140,7 +151,7 @@ const loginUser = async (req, res) => {
     }
 
     // Generate JWT
-    const token = generateToken(user);
+    const token: string = generateToken(user);
 
     // Send response
     return successResponse(
@@ -157,13 +168,8 @@ const loginUser = async (req, res) => {
         }
       }
     );
-
   } catch (err) {
-    return errorResponse(res, 500, err.message);
+    const error = err as CustomError;
+    return errorResponse(res, 500, error.message || "Internal server error");
   }
-};
-
-module.exports = {
-  registerUser,
-  loginUser
 };

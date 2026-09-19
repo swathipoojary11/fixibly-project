@@ -95,25 +95,55 @@
 
 
 
+import { Request, Response } from 'express';
 
-
+// Safe require for Supabase admin client
 const { supabaseAdmin } = require('../config/supabase');
 
-const buildNotifFilter = (role, userId) => {
-  const parts = [];
+
+type IdType = string | number;
+
+type RecipientRole = 'TECHNICIAN' | 'CUSTOMER' | 'DISPATCHER' | 'ADMIN' | 'ALL' | string;
+
+// Query parameters for GET /notifications
+type NotificationQueryParams = {
+  role?: RecipientRole;
+  userId?: IdType;
+  notificationType?: string;
+};
+
+// Body parameters for POST /notifications/read-all
+type MarkReadBody = {
+  role?: RecipientRole;
+  userId?: IdType;
+};
+
+// Error interface for catch blocks
+type CustomError = {
+  message?: string;
+};
+
+// Generic DB record helper
+type DbRecord = Record<string, any>;
+
+
+const buildNotifFilter = (role?: RecipientRole, userId?: IdType): string => {
+  const parts: string[] = [];
   parts.push(`recipient_role.eq.ALL`); // broadcast-to-everyone notifications
+
   if (role && userId) {
     parts.push(`and(recipient_role.eq.${role},user_id.eq.${userId})`);
   } else if (role) {
-    parts.push(`recipient_role.eq.${role}`); // fallback: role-only queries (e.g. dispatcher/admin dashboards with no specific user)
+    parts.push(`recipient_role.eq.${role}`); // fallback: role-only queries
   } else if (userId) {
     parts.push(`user_id.eq.${userId}`);
   }
+
   return parts.join(',');
 };
-
-const getNotifications = async (req, res) => {
-  const { role, userId, notificationType } = req.query;
+// 1. Fetch Notifications with joined booking issue descriptions
+export const getNotifications = async (req: Request, res: Response) => {
+  const { role, userId, notificationType } = req.query as NotificationQueryParams;
 
   if (!role && !userId) {
     return res.status(400).json({ error: 'role or userId is required' });
@@ -135,28 +165,33 @@ const getNotifications = async (req, res) => {
     if (role === 'TECHNICIAN') {
       query = query.in('notification_type', ['Emergency', 'Assignment']);
     } else if (role === 'CUSTOMER') {
-      // Customers only see technician assignment details, not every status update
+      // Customers only see technician assignment details
       query = query.eq('notification_type', 'Assignment');
     }
 
     const { data, error } = await query;
     if (error) throw error;
 
-    const notifications = (data || []).map(notification => ({
+    const rawList: DbRecord[] = data || [];
+
+    const notifications = rawList.map((notification: DbRecord) => ({
       ...notification,
-      issue: notification.bookings?.service_problems?.problem_name
-        || notification.bookings?.issue_description
-        || null
+      issue:
+        notification.bookings?.service_problems?.problem_name ||
+        notification.bookings?.issue_description ||
+        null
     }));
 
     return res.status(200).json({ success: true, notifications });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
-const getUnreadBadgeCount = async (req, res) => {
-  const { role, userId } = req.query;
+// 2. Fetch Unread Badge Count
+export const getUnreadBadgeCount = async (req: Request, res: Response) => {
+  const { role, userId } = req.query as NotificationQueryParams;
 
   if (!role && !userId) {
     return res.status(400).json({ error: 'role or userId is required' });
@@ -173,12 +208,14 @@ const getUnreadBadgeCount = async (req, res) => {
 
     return res.status(200).json({ unreadCount: count || 0 });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
-const markAllNotificationsRead = async (req, res) => {
-  const { role, userId } = req.body;
+// 3. Mark All Filtered Notifications as Read
+export const markAllNotificationsRead = async (req: Request, res: Response) => {
+  const { role, userId } = req.body as MarkReadBody;
 
   if (!role && !userId) {
     return res.status(400).json({ error: 'role or userId is required' });
@@ -192,9 +229,13 @@ const markAllNotificationsRead = async (req, res) => {
 
     if (error) throw error;
 
-    return res.status(200).json({ success: true, message: 'All notifications marked as read' });
+    return res.status(200).json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 

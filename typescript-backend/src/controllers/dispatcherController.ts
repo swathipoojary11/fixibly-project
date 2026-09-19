@@ -1,19 +1,93 @@
-
+import { Request, Response } from 'express';
 
 const { supabaseAdmin } = require('../config/supabase');
 const { createNotification } = require('../services/notificationService');
 const { logAuditEvent } = require('../services/auditService');
 // const { data, error } = await supabaseAdmin
+type IdType = string | number;
 
-const getBookingIssue = (booking) =>
-  booking?.service_problems?.problem_name
-  || booking?.service_problems?.[0]?.problem_name
-  || booking?.issue_description
-  || null;
+type CustomError = {
+  message?: string;
+};
+
+// Request with optional authenticated user
+type AuthRequest = Request & {
+  user?: {
+    user_id?: IdType;
+    id?: IdType;
+  };
+};
+
+// Generic DB record helper
+type DbRecord = Record<string, any>;
+
+// Payloads for dispatcher operations
+type AssignBody = {
+  bookingId?: IdType;
+  technicianId?: IdType;
+  dispatcherUserId?: IdType;
+};
+
+type ReassignBody = {
+  bookingId?: IdType;
+  oldTechnicianId?: IdType;
+  newTechnicianId?: IdType;
+  reassignReason?: string;
+  dispatcherUserId?: IdType;
+};
+
+type UpdateStatusBody = {
+  bookingId?: IdType;
+  status?: string;
+  cancelReason?: string;
+  userId?: IdType;
+  userRole?: string;
+};
+
+type BroadcastBody = {
+  bookingId?: IdType;
+  dispatcherUserId?: IdType;
+  technicianId?: IdType;
+};
+
+type DowngradeBody = {
+  bookingId?: IdType;
+  dispatcherUserId?: IdType;
+  reason?: string;
+};
+
+type ManualBookingBody = {
+  customerId?: IdType;
+  categoryId?: IdType;
+  problemId?: IdType | null;
+  issueDescription?: string;
+  emergencyFlag?: boolean;
+  emergencyReason?: string | null;
+  priority?: string;
+  preferredDate?: string | null;
+  preferredTime?: string | null;
+  houseNumber?: string | null;
+  apartmentName?: string | null;
+  street?: string;
+  area?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  customerName?: string;
+  customerPhone?: string;
+  dispatcherUserId?: IdType;
+};
+const getBookingIssue = (booking: DbRecord): string | null =>
+  booking?.service_problems?.problem_name ||
+  booking?.service_problems?.[0]?.problem_name ||
+  booking?.issue_description ||
+  null;
+
+
 
 // 1. Assign Technician (Exchanges Customer & Technician Data + Notifies Admin)
-const assignTechnician = async (req, res) => {
-  const { bookingId, technicianId, dispatcherUserId } = req.body;
+export const assignTechnician = async (req: Request, res: Response) => {
+  const { bookingId, technicianId, dispatcherUserId } = req.body as AssignBody;
 
   try {
     // A. Fetch full Booking details with joined Customer (users) information
@@ -69,7 +143,6 @@ const assignTechnician = async (req, res) => {
 
     // E. SEND CUSTOMER DETAILS TO TECHNICIAN
     const customerInfo = booking.customers;
-    const customerAddress = `${booking.house_number || ''} ${booking.street}, ${booking.area}, ${booking.city} - ${booking.pincode}`.trim();
 
     await createNotification({
       recipientRole: 'TECHNICIAN',
@@ -119,13 +192,14 @@ const assignTechnician = async (req, res) => {
       customerDetails: customerInfo
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
 // 2. Reassign Technician (Notifies New Tech, Old Tech, Customer & Admin)
-const reassignTechnician = async (req, res) => {
-  const { bookingId, oldTechnicianId, newTechnicianId, reassignReason, dispatcherUserId } = req.body;
+export const reassignTechnician = async (req: Request, res: Response) => {
+  const { bookingId, oldTechnicianId, newTechnicianId, reassignReason, dispatcherUserId } = req.body as ReassignBody;
 
   try {
     const { data: booking } = await supabaseAdmin
@@ -227,52 +301,52 @@ const reassignTechnician = async (req, res) => {
 
     return res.status(200).json({ success: true, message: 'Technician reassigned successfully' });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
-// const supabase = require("../config/supabase");
 
-const getDispatcherProfile = async (req, res) => {
-    try {
-        // Support both authenticated (req.user) and unauthenticated (query param) access
-        const userId = req.user?.user_id || req.query?.user_id;
+// 3. Get Dispatcher Profile
+export const getDispatcherProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.user_id || req.user?.id || (req.query?.user_id as string);
 
-        if (!userId) {
-            return res.status(200).json({
-                success: false,
-                message: "No user_id provided"
-            });
-        }
-
-        const { data, error } = await supabaseAdmin
-            .from("users")
-            .select("user_id, full_name, email, phone, address, role_id")
-            .eq("user_id", userId)
-            .single();
-
-        if (error || !data) {
-            return res.status(404).json({
-                success: false,
-                message: "Dispatcher not found"
-            });
-        }
-
-        res.json({
-            success: true,
-            data
-        });
-
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
+    if (!userId) {
+      return res.status(200).json({
+        success: false,
+        message: 'No user_id provided'
+      });
     }
+
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('user_id, full_name, email, phone, address, role_id')
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dispatcher not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (err) {
+    const error = err as CustomError;
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
 };
 
-// 3. Complete or Cancel Job (Notifies All Lifecycle Parties)
-const updateBookingStatus = async (req, res) => {
-  const { bookingId, status, cancelReason, userId, userRole } = req.body;
+// 4. Complete or Cancel Job (Notifies All Lifecycle Parties)
+export const updateBookingStatus = async (req: Request, res: Response) => {
+  const { bookingId, status, cancelReason, userId, userRole } = req.body as UpdateStatusBody;
 
   try {
     const { data: booking } = await supabaseAdmin
@@ -281,7 +355,7 @@ const updateBookingStatus = async (req, res) => {
       .eq('booking_id', bookingId)
       .single();
 
-    const updatePayload = {
+    const updatePayload: DbRecord = {
       booking_status: status,
       updated_at: new Date().toISOString()
     };
@@ -311,7 +385,7 @@ const updateBookingStatus = async (req, res) => {
     }
 
     // Get technician's user_id if needed for notification
-    let techUserId = null;
+    let techUserId: IdType | null = null;
     if (booking?.technician_id) {
       const { data: techData } = await supabaseAdmin
         .from('technicians')
@@ -326,7 +400,7 @@ const updateBookingStatus = async (req, res) => {
     if (booking?.technician_id) rolesToNotify.push('TECHNICIAN');
 
     for (const role of rolesToNotify) {
-      let targetUserId = null;
+      let targetUserId: IdType | null = null;
       if (role === 'CUSTOMER') targetUserId = booking.customer_id;
       if (role === 'TECHNICIAN') targetUserId = techUserId;
 
@@ -345,16 +419,14 @@ const updateBookingStatus = async (req, res) => {
 
     return res.status(200).json({ success: true, message: `Booking marked as ${status}` });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
-// 4. Live Statistics for Dispatcher Dashboard Cards
-const getDispatcherDashboardStats = async (req, res) => {
+// 5. Live Statistics for Dispatcher Dashboard Cards
+export const getDispatcherDashboardStats = async (req: Request, res: Response) => {
   try {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
       .select('*, service_problems(problem_name), customers:users!fk_booking_customer(full_name, phone, email), technicians(technician_id, rating, availability_status, category_id, users(full_name, phone, email))');
@@ -365,15 +437,18 @@ const getDispatcherDashboardStats = async (req, res) => {
       .select('*, users(full_name, phone, email)');
     if (tErr) throw tErr;
 
-    const pendingBookings = bookings.filter(b => b.booking_status === 'Pending').length;
-    const availableTechnicians = technicians.filter(t => t.availability_status === 'Available').length;
-    const busyTechnicians = technicians.filter(t => t.availability_status === 'Busy').length;
+    const safeBookings: DbRecord[] = bookings || [];
+    const safeTechnicians: DbRecord[] = technicians || [];
 
-    const emergencyJobsList = bookings.filter(b =>
-      b.emergency_flag === true && b.booking_status !== 'Completed' && b.booking_status !== 'Cancelled'
+    const pendingBookings = safeBookings.filter(b => b.booking_status === 'Pending').length;
+    const availableTechnicians = safeTechnicians.filter(t => t.availability_status === 'Available').length;
+    const busyTechnicians = safeTechnicians.filter(t => t.availability_status === 'Busy').length;
+
+    const emergencyJobsList = safeBookings.filter(
+      b => b.emergency_flag === true && b.booking_status !== 'Completed' && b.booking_status !== 'Cancelled'
     );
 
-    const cancelledList = bookings.filter(b => b.booking_status === 'Cancelled');
+    const cancelledList = safeBookings.filter(b => b.booking_status === 'Cancelled');
 
     return res.status(200).json({
       success: true,
@@ -384,33 +459,36 @@ const getDispatcherDashboardStats = async (req, res) => {
         emergencyJobs: emergencyJobsList.length,
         cancelledToday: cancelledList.length
       },
-      bookings: bookings
+      bookings: safeBookings
         .filter(b => !b.emergency_flag && b.booking_status !== 'Cancelled')
         .map(b => ({ ...b, issue: getBookingIssue(b) })),
       emergencies: emergencyJobsList.map(b => ({ ...b, issue: getBookingIssue(b) })),
       cancelledBookings: cancelledList.map(b => ({ ...b, issue: getBookingIssue(b) })),
-      technicians
+      technicians: safeTechnicians
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
-const searchCustomers = async (req, res) => {
+
+// 6. Search Customers by Query (Phone or Email)
+export const searchCustomers = async (req: Request, res: Response) => {
   const { phone, email } = req.query;
 
   try {
     let query = supabaseAdmin
-      .from("users")
-      .select("user_id, full_name, email, phone");
+      .from('users')
+      .select('user_id, full_name, email, phone');
 
     if (phone) {
-      query = query.eq("phone", phone);
+      query = query.eq('phone', phone as string);
     } else if (email) {
-      query = query.eq("email", email);
+      query = query.eq('email', email as string);
     } else {
       return res.status(400).json({
         success: false,
-        message: "Phone or email is required"
+        message: 'Phone or email is required'
       });
     }
 
@@ -419,7 +497,7 @@ const searchCustomers = async (req, res) => {
     if (error || !data) {
       return res.status(404).json({
         success: false,
-        message: "Customer not found"
+        message: 'Customer not found'
       });
     }
 
@@ -427,19 +505,49 @@ const searchCustomers = async (req, res) => {
       success: true,
       customer: data
     });
-
   } catch (err) {
+    const error = err as CustomError;
     return res.status(500).json({
       success: false,
-      message: err.message
+      message: error.message || 'Internal server error'
     });
   }
 };
-// 5. Manual Booking Endpoint (Dispatcher UI)
 
-// 6. Emergency Broadcast Endpoint
-const triggerEmergencyBroadcast = async (req, res) => {
-  const { bookingId, dispatcherUserId } = req.body;
+// 7. Search Customer by Phone
+export const searchCustomerByPhone = async (req: Request, res: Response) => {
+  try {
+    const { phone } = req.query;
+
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('user_id, full_name, phone')
+      .eq('phone', phone as string)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      customer: data
+    });
+  } catch (err) {
+    const error = err as CustomError;
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
+};
+
+// 8. Emergency Broadcast Endpoint
+export const triggerEmergencyBroadcast = async (req: Request, res: Response) => {
+  const { bookingId, dispatcherUserId } = req.body as BroadcastBody;
 
   try {
     const { data: booking, error: bErr } = await supabaseAdmin
@@ -485,39 +593,13 @@ const triggerEmergencyBroadcast = async (req, res) => {
       message: `Emergency broadcast sent to ${availableTechs?.length || 0} available technicians.`
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
-const searchCustomerByPhone = async (req, res) => {
-  try {
-    const { phone } = req.query;
 
-    const { data, error } = await supabaseAdmin
-      .from("users")
-      .select("user_id, full_name, phone")
-      .eq("phone", phone)
-      .single();
-
-    if (error || !data) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found"
-      });
-    }
-
-    return res.json({
-      success: true,
-      customer: data
-    });
-
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-};
-const createManualBooking = async (req, res) => {
+// 9. Manual Booking Creation (Walk-in / Phone customer)
+export const createManualBooking = async (req: Request, res: Response) => {
   try {
     const {
       customerId,
@@ -526,7 +608,6 @@ const createManualBooking = async (req, res) => {
       issueDescription,
       emergencyFlag,
       emergencyReason,
-      priority,
       preferredDate,
       preferredTime,
       houseNumber,
@@ -539,86 +620,85 @@ const createManualBooking = async (req, res) => {
       customerName,
       customerPhone,
       dispatcherUserId
-    } = req.body;
+    } = req.body as ManualBookingBody;
 
-    // If no customerId, try to find or create a guest record
     let resolvedCustomerId = customerId || null;
 
     if (!resolvedCustomerId) {
-        // If a phone number is provided, try to find an existing user
-        if (customerPhone) {
-            const { data: existingUser } = await supabaseAdmin
-                .from('users')
-                .select('user_id')
-                .eq('phone', customerPhone)
-                .maybeSingle();
+      if (customerPhone) {
+        const { data: existingUser } = await supabaseAdmin
+          .from('users')
+          .select('user_id')
+          .eq('phone', customerPhone)
+          .maybeSingle();
 
-            if (existingUser) {
-                resolvedCustomerId = existingUser.user_id;
-            }
+        if (existingUser) {
+          resolvedCustomerId = existingUser.user_id;
         }
+      }
 
-        // If no user is found or no phone is provided, create a new guest user
-        if (!resolvedCustomerId) {
-            // Get the Customer role_id
-            const { data: roleRow } = await supabaseAdmin
-                .from('roles')
-                .select('role_id')
-                .eq('role_name', 'Customer')
-                .maybeSingle();
+      if (!resolvedCustomerId) {
+        const { data: roleRow } = await supabaseAdmin
+          .from('roles')
+          .select('role_id')
+          .eq('role_name', 'Customer')
+          .maybeSingle();
 
-            // Generate a unique email and a random password hash for the guest user
-            const guestEmail = `guest-${Date.now()}@fixibly.walkin`;
-            const guestPasswordHash = Math.random().toString(36).substring(2);
+        const guestEmail = `guest-${Date.now()}@fixibly.walkin`;
+        const guestPasswordHash = Math.random().toString(36).substring(2);
 
-            const { data: newUser, error: userErr } = await supabaseAdmin
-                .from('users')
-                .insert([{
-                    full_name: customerName || 'Walk-in Customer',
-                    phone: customerPhone || null,
-                    email: guestEmail,
-                    password_hash: guestPasswordHash,
-                    role_id: roleRow?.role_id || null, // Make sure to handle if role not found
-                    created_at: new Date().toISOString()
-                }])
-                .select('user_id')
-                .single();
-
-            if (userErr) {
-                console.error("Error creating guest user:", userErr);
-            } else if (newUser) {
-                resolvedCustomerId = newUser.user_id;
+        const { data: newUser, error: userErr } = await supabaseAdmin
+          .from('users')
+          .insert([
+            {
+              full_name: customerName || 'Walk-in Customer',
+              phone: customerPhone || null,
+              email: guestEmail,
+              password_hash: guestPasswordHash,
+              role_id: roleRow?.role_id || null,
+              created_at: new Date().toISOString()
             }
+          ])
+          .select('user_id')
+          .single();
+
+        if (userErr) {
+          console.error('Error creating guest user:', userErr);
+        } else if (newUser) {
+          resolvedCustomerId = newUser.user_id;
         }
+      }
     }
 
     if (!resolvedCustomerId) {
-        return res.status(400).json({ success: false, error: 'Customer could not be identified or created.' });
+      return res.status(400).json({ success: false, error: 'Customer could not be identified or created.' });
     }
 
     const { data: booking, error } = await supabaseAdmin
       .from('bookings')
-      .insert([{
-        customer_id: resolvedCustomerId,
-        category_id: categoryId,
-        problem_id: problemId,
-        issue_description: issueDescription,
-        emergency_flag: emergencyFlag || false,
-        emergency_reason: emergencyReason || null,
-        priority: emergencyFlag ? 'Emergency' : 'Normal',
-        preferred_date: preferredDate,
-        preferred_time: preferredTime,
-        house_number: houseNumber,
-        apartment_name: apartmentName || null,
-        street,
-        area,
-        city,
-        state,
-        pincode,
-        booking_status: 'Pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
+      .insert([
+        {
+          customer_id: resolvedCustomerId,
+          category_id: categoryId,
+          problem_id: problemId,
+          issue_description: issueDescription,
+          emergency_flag: emergencyFlag || false,
+          emergency_reason: emergencyReason || null,
+          priority: emergencyFlag ? 'Emergency' : 'Normal',
+          preferred_date: preferredDate,
+          preferred_time: preferredTime,
+          house_number: houseNumber,
+          apartment_name: apartmentName || null,
+          street,
+          area,
+          city,
+          state,
+          pincode,
+          booking_status: 'Pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ])
       .select()
       .single();
 
@@ -641,14 +721,15 @@ const createManualBooking = async (req, res) => {
     );
 
     return res.status(201).json({ success: true, booking });
-
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
   }
 };
-// 7. Downgrade Emergency Status
-const downgradeEmergency = async (req, res) => {
-  const { bookingId, dispatcherUserId, reason } = req.body;
+
+// 10. Downgrade Emergency Status
+export const downgradeEmergency = async (req: Request, res: Response) => {
+  const { bookingId, dispatcherUserId, reason } = req.body as DowngradeBody;
 
   try {
     const { data: updatedBooking, error } = await supabaseAdmin
@@ -677,12 +758,13 @@ const downgradeEmergency = async (req, res) => {
       booking: updatedBooking
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
-// 8. Technician Summary Stats for Dispatcher UI
-const getTechnicianSummaryStats = async (req, res) => {
+// 11. Technician Summary Stats for Dispatcher UI
+export const getTechnicianSummaryStats = async (req: Request, res: Response) => {
   try {
     const { data: technicians, error } = await supabaseAdmin
       .from('technicians')
@@ -699,10 +781,11 @@ const getTechnicianSummaryStats = async (req, res) => {
 
     if (error) throw error;
 
-    const total = technicians.length;
-    const available = technicians.filter(t => t.availability_status === 'Available').length;
-    const busy = technicians.filter(t => t.availability_status === 'Busy').length;
-    const offline = technicians.filter(t => t.availability_status === 'Offline').length;
+    const safeTechs: DbRecord[] = technicians || [];
+    const total = safeTechs.length;
+    const available = safeTechs.filter(t => t.availability_status === 'Available').length;
+    const busy = safeTechs.filter(t => t.availability_status === 'Busy').length;
+    const offline = safeTechs.filter(t => t.availability_status === 'Offline').length;
 
     return res.status(200).json({
       success: true,
@@ -712,14 +795,16 @@ const getTechnicianSummaryStats = async (req, res) => {
         busy,
         offline
       },
-      technicians
+      technicians: safeTechs
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
-// 9. Active bookings with technician location (for CurrentStatus polling)
-const getActiveBookingsWithLocation = async (req, res) => {
+
+// 12. Active Bookings with Technician Location (for Polling)
+export const getActiveBookingsWithLocation = async (req: Request, res: Response) => {
   try {
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
@@ -728,18 +813,22 @@ const getActiveBookingsWithLocation = async (req, res) => {
 
     if (bErr) throw bErr;
 
-    const techIds = [...new Set((bookings || []).map(b => b.technician_id).filter(Boolean))];
+    const safeBookings: DbRecord[] = bookings || [];
+    const techIds = [...new Set(safeBookings.map(b => b.technician_id).filter(Boolean))];
 
-    let locationMap = {};
+    const locationMap: Record<string, DbRecord> = {};
     if (techIds.length > 0) {
       const { data: locations } = await supabaseAdmin
         .from('technician_locations')
         .select('technician_id, latitude, longitude, updated_at')
         .in('technician_id', techIds);
-      (locations || []).forEach(l => { locationMap[l.technician_id] = l; });
+
+      (locations || []).forEach((l: DbRecord) => {
+        locationMap[l.technician_id] = l;
+      });
     }
 
-    const result = (bookings || []).map(b => ({
+    const result = safeBookings.map(b => ({
       bookingId: b.booking_id,
       status: b.booking_status,
       customerName: b.customers?.full_name || null,
@@ -749,25 +838,27 @@ const getActiveBookingsWithLocation = async (req, res) => {
       technicianPhone: b.technicians?.users?.phone || null,
       issue: getBookingIssue(b),
       address: [b.house_number, b.street, b.area, b.city].filter(Boolean).join(', '),
-      location: locationMap[b.technician_id] ? {
-        lat: locationMap[b.technician_id].latitude,
-        lng: locationMap[b.technician_id].longitude,
-        updatedAt: locationMap[b.technician_id].updated_at
-      } : null
+      location: locationMap[b.technician_id]
+        ? {
+            lat: locationMap[b.technician_id].latitude,
+            lng: locationMap[b.technician_id].longitude,
+            updatedAt: locationMap[b.technician_id].updated_at
+          }
+        : null
     }));
 
     return res.status(200).json({ success: true, bookings: result });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 
-// 10. Accept Emergency Broadcast — first technician to accept gets auto-assigned
-const acceptEmergencyBroadcast = async (req, res) => {
-  const { bookingId, technicianId } = req.body;
+// 13. Accept Emergency Broadcast
+export const acceptEmergencyBroadcast = async (req: Request, res: Response) => {
+  const { bookingId, technicianId } = req.body as BroadcastBody;
 
   try {
-    // Check booking is still unassigned and pending
     const { data: booking, error: bErr } = await supabaseAdmin
       .from('bookings')
       .select('booking_id, booking_status, technician_id, customer_id, issue_description, street, city')
@@ -777,7 +868,6 @@ const acceptEmergencyBroadcast = async (req, res) => {
     if (bErr || !booking) return res.status(404).json({ error: 'Booking not found' });
     if (booking.technician_id) return res.status(409).json({ error: 'Already assigned to another technician' });
 
-    // Fetch technician details
     const { data: tech, error: tErr } = await supabaseAdmin
       .from('technicians')
       .select('technician_id, user_id, rating, users(full_name, phone)')
@@ -786,7 +876,6 @@ const acceptEmergencyBroadcast = async (req, res) => {
 
     if (tErr || !tech) return res.status(404).json({ error: 'Technician not found' });
 
-    // Assign the booking
     await supabaseAdmin
       .from('bookings')
       .update({ technician_id: technicianId, booking_status: 'Assigned', updated_at: new Date().toISOString() })
@@ -797,7 +886,6 @@ const acceptEmergencyBroadcast = async (req, res) => {
       .update({ availability_status: 'Busy' })
       .eq('technician_id', technicianId);
 
-    // Notify technician
     await createNotification({
       recipientRole: 'TECHNICIAN',
       userId: tech.user_id,
@@ -808,7 +896,6 @@ const acceptEmergencyBroadcast = async (req, res) => {
       priority: 'High'
     });
 
-    // Notify customer
     if (booking.customer_id) {
       await createNotification({
         recipientRole: 'CUSTOMER',
@@ -821,7 +908,6 @@ const acceptEmergencyBroadcast = async (req, res) => {
       });
     }
 
-    // Notify dispatcher/admin
     await createNotification({
       recipientRole: 'DISPATCHER',
       bookingId,
@@ -831,12 +917,15 @@ const acceptEmergencyBroadcast = async (req, res) => {
       priority: 'High'
     });
 
-    return res.status(200).json({ success: true, message: `${tech.users?.full_name} assigned to booking #${bookingId}` });
+    return res.status(200).json({
+      success: true,
+      message: `${tech.users?.full_name} assigned to booking #${bookingId}`
+    });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const error = err as CustomError;
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
-
 module.exports = {
   assignTechnician,
   reassignTechnician,
