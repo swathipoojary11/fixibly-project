@@ -1,1 +1,1 @@
-{"version":3,"file":"serviceService.d.ts","sourceRoot":"","sources":["../../src/services/serviceService.ts"],"names":[],"mappings":"AACA,KAAK,MAAM,GAAG,MAAM,GAAG,MAAM,CAAC;AAC9B,eAAO,MAAM,sBAAsB,oBAGlC,CAAC;AAEF,eAAO,MAAM,uBAAuB,eAAsB,MAAM,iBAQ/D,CAAC"}
+{"version":3,"file":"serviceService.d.ts","sourceRoot":"","sources":["../../src/services/serviceService.ts"],"names":[],"mappings":"AACA,KAAK,MAAM,GAAG,MAAM,GAAG,MAAM,CAAC;AAC9B,eAAO,MAAM,sBAAsB,oBAGlC,CAAC;AAEF,eAAO,MAAM,uBAAuB,GAAU,YAAY,MAAM,iBAQ/D,CAAC"}

@@ -1,17 +1,17 @@
-const express = require("express");
-const router = express.Router();
+import express, { Router } from 'express';
 
-const { authenticateUser } = require("../middleware/authMiddleware");
+import { authenticateUser } from '../middleware/authMiddleware';
+import {
+  getProfile,
+  updateProfile
+} from '../controllers/profileController';
 
-const {
-    getProfile,
-    updateProfile
-} = require("../controllers/profileController");
+const router: Router = express.Router();
 
 // View Profile
-router.get("/", authenticateUser, getProfile);
+router.get('/', authenticateUser, getProfile);
 
 // Update Profile
-router.put("/", authenticateUser, updateProfile);
+router.put('/', authenticateUser, updateProfile);
 
-module.exports = router;
+export default router;

@@ -1,2 +1,35 @@
-export {};
+type IdType = string | number;
+type AvailabilityStatus = "Available" | "Busy" | "Offline" | string;
+type DbRecord = Record<string, any>;
+export declare const getProfile: (userId: IdType | undefined) => Promise<any>;
+export declare const getJobs: (technicianId: IdType | undefined) => Promise<DbRecord[]>;
+export declare const getEmergencyJobs: () => Promise<any>;
+export declare const acceptJob: (technicianId: IdType | undefined, bookingId: IdType) => Promise<any>;
+export declare const rejectJob: (technicianId: IdType | undefined, bookingId: IdType) => Promise<any>;
+export declare const acceptEmergency: (technicianId: IdType | undefined, bookingId: IdType) => Promise<any>;
+export declare const updateAvailability: (technicianId: IdType | undefined, status?: AvailabilityStatus) => Promise<any>;
+export declare const updateLocation: (technicianId: IdType | undefined, latitude?: number, longitude?: number) => Promise<any>;
+export declare const updateJobStatus: (bookingId: IdType, status?: string) => Promise<any>;
+export declare const getNotifications: (userId: IdType | undefined) => Promise<any>;
+export declare const markNotificationRead: (notificationId: IdType) => Promise<any>;
+export declare const completeJob: (bookingId: IdType) => Promise<any>;
+export declare const getServiceCategories: () => Promise<any>;
+export declare const updateServiceCategory: (technicianId: IdType | undefined, categoryId: IdType | undefined) => Promise<any>;
+declare const _default: {
+    getProfile: (userId: IdType | undefined) => Promise<any>;
+    getJobs: (technicianId: IdType | undefined) => Promise<DbRecord[]>;
+    getEmergencyJobs: () => Promise<any>;
+    acceptJob: (technicianId: IdType | undefined, bookingId: IdType) => Promise<any>;
+    rejectJob: (technicianId: IdType | undefined, bookingId: IdType) => Promise<any>;
+    updateAvailability: (technicianId: IdType | undefined, status?: AvailabilityStatus) => Promise<any>;
+    updateLocation: (technicianId: IdType | undefined, latitude?: number, longitude?: number) => Promise<any>;
+    updateJobStatus: (bookingId: IdType, status?: string) => Promise<any>;
+    acceptEmergency: (technicianId: IdType | undefined, bookingId: IdType) => Promise<any>;
+    getNotifications: (userId: IdType | undefined) => Promise<any>;
+    markNotificationRead: (notificationId: IdType) => Promise<any>;
+    completeJob: (bookingId: IdType) => Promise<any>;
+    getServiceCategories: () => Promise<any>;
+    updateServiceCategory: (technicianId: IdType | undefined, categoryId: IdType | undefined) => Promise<any>;
+};
+export default _default;
 //# sourceMappingURL=technicianService.d.ts.map

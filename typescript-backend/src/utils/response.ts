@@ -1,19 +1,30 @@
-const successResponse = (res, statusCode, message, data = null) => {
-    return res.status(statusCode).json({
-        success: true,
-        message,
-        ...(data && { data })
-    });
+import { Response } from "express";
+
+export const successResponse = (
+  res: Response,
+  statusCode: number,
+  message: string,
+  data: any = null
+) => {
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    ...(data !== null && data !== undefined && { data })
+  });
 };
 
-const errorResponse = (res, statusCode, message) => {
-    return res.status(statusCode).json({
-        success: false,
-        message
-    });
+export const errorResponse = (
+  res: Response,
+  statusCode: number,
+  message: string
+) => {
+  return res.status(statusCode).json({
+    success: false,
+    message
+  });
 };
 
-module.exports = {
-    successResponse,
-    errorResponse
+export default {
+  successResponse,
+  errorResponse
 };

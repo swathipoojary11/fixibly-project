@@ -1,16 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateToken = void 0;
 const jwt = require("jsonwebtoken");
-// Generate JWT Token
 const generateToken = (user) => {
+    const secretKey = process.env.JWT_SECRET || "fieldflow123456789";
     return jwt.sign({
         user_id: user.user_id,
         role_id: user.role_id
-    }, process.env.JWT_SECRET || "fieldflow123456789", {
-        expiresIn: "1d"
-    });
+    }, secretKey, { expiresIn: "1d" });
 };
-module.exports = {
-    generateToken
-};
+exports.generateToken = generateToken;
+exports.default = { generateToken: exports.generateToken };
 //# sourceMappingURL=jwt.js.map

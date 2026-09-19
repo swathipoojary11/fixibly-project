@@ -145,4 +145,4 @@ router.patch(
   markNotificationRead
 );
 
-module.exports = router;
+export default router;
