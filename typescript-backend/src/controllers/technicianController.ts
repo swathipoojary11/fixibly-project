@@ -1,11 +1,12 @@
 // backend/src/controllers/technicianController.ts
+
 import { Request, Response } from "express";
 
 // Safe import: works whether technicianService is already .ts or still .js
 const technicianService = require("../services/technicianService");
 
 // ======================================================
-// 1. DATA TYPES (Sir's pattern)
+// 1. DATA TYPES
 // ======================================================
 
 type IdType = string | number;
@@ -32,7 +33,7 @@ type JobStatusBody = {
 };
 
 type AvailabilityBody = {
-  status?: "Available" | "Busy" | "Offline" | string;
+  status?: "Available" | "Busy" | "Offline";
 };
 
 type LocationBody = {
@@ -52,21 +53,38 @@ type CustomError = {
 export const profile = async (req: TechRequest, res: Response) => {
   try {
     const userId = req.user?.user_id || req.user?.id;
+
     const data = await technicianService.getProfile(userId);
-    return res.json({ success: true, data });
+
+    return res.json({
+      success: true,
+      data
+    });
   } catch (err) {
     const error = err as CustomError;
-    return res.status(500).json({ success: false, message: error.message || "Internal server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
   }
 };
 
 export const serviceCategories = async (req: Request, res: Response) => {
   try {
     const data = await technicianService.getServiceCategories();
-    return res.json({ success: true, data });
+
+    return res.json({
+      success: true,
+      data
+    });
   } catch (err) {
     const error = err as CustomError;
-    return res.status(500).json({ success: false, message: error.message || "Internal server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
   }
 };
 
@@ -79,10 +97,18 @@ export const updateCategory = async (req: TechRequest, res: Response) => {
       techId,
       body.category_id
     );
-    return res.json({ success: true, data });
+
+    return res.json({
+      success: true,
+      data
+    });
   } catch (err) {
     const error = err as CustomError;
-    return res.status(500).json({ success: false, message: error.message || "Internal server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
   }
 };
 
@@ -90,9 +116,10 @@ export const updateCategory = async (req: TechRequest, res: Response) => {
 // 3. JOB ASSIGNMENT & LIFECYCLE
 // ======================================================
 
-const jobs = async (req: TechRequest, res: Response) => {
+export const jobs = async (req: TechRequest, res: Response) => {
   try {
     const techId = req.user?.technician_id;
+
     const data = await technicianService.getJobs(techId);
 
     return res.status(200).json({
@@ -101,6 +128,7 @@ const jobs = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -108,7 +136,7 @@ const jobs = async (req: TechRequest, res: Response) => {
   }
 };
 
-const emergency = async (req: Request, res: Response) => {
+export const emergency = async (req: Request, res: Response) => {
   try {
     const data = await technicianService.getEmergencyJobs();
 
@@ -118,6 +146,7 @@ const emergency = async (req: Request, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -125,15 +154,13 @@ const emergency = async (req: Request, res: Response) => {
   }
 };
 
-const accept = async (req: TechRequest, res: Response) => {
+// 1. Fixed req.params.id type assertion
+export const accept = async (req: TechRequest, res: Response) => {
   try {
     const techId = req.user?.technician_id;
-    const jobId: string = req.params.id;
+    const jobId = req.params.id as string;
 
-    const data = await technicianService.acceptJob(
-      techId,
-      jobId
-    );
+    const data = await technicianService.acceptJob(techId, jobId);
 
     return res.status(200).json({
       success: true,
@@ -142,6 +169,7 @@ const accept = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -149,15 +177,13 @@ const accept = async (req: TechRequest, res: Response) => {
   }
 };
 
-const reject = async (req: TechRequest, res: Response) => {
+// 2. Fixed req.params.id type assertion
+export const reject = async (req: TechRequest, res: Response) => {
   try {
     const techId = req.user?.technician_id;
-    const jobId: string = req.params.id;
+    const jobId = req.params.id as string;
 
-    const data = await technicianService.rejectJob(
-      techId,
-      jobId
-    );
+    const data = await technicianService.rejectJob(techId, jobId);
 
     return res.status(200).json({
       success: true,
@@ -166,6 +192,7 @@ const reject = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -173,15 +200,13 @@ const reject = async (req: TechRequest, res: Response) => {
   }
 };
 
-const jobStatus = async (req: Request, res: Response) => {
+// 3. Fixed req.params.id type assertion
+export const jobStatus = async (req: TechRequest, res: Response) => {
   try {
-    const jobId: string = req.params.id;
+    const jobId = req.params.id as string;
     const body = req.body as JobStatusBody;
 
-    const data = await technicianService.updateJobStatus(
-      jobId,
-      body.status
-    );
+    const data = await technicianService.updateJobStatus(jobId, body.status);
 
     return res.status(200).json({
       success: true,
@@ -190,6 +215,7 @@ const jobStatus = async (req: Request, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -201,7 +227,7 @@ const jobStatus = async (req: Request, res: Response) => {
 // 4. AVAILABILITY & TRACKING
 // ======================================================
 
-const availability = async (req: TechRequest, res: Response) => {
+export const availability = async (req: TechRequest, res: Response) => {
   try {
     const techId = req.user?.technician_id;
     const body = req.body as AvailabilityBody;
@@ -218,6 +244,7 @@ const availability = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -225,7 +252,7 @@ const availability = async (req: TechRequest, res: Response) => {
   }
 };
 
-const location = async (req: TechRequest, res: Response) => {
+export const location = async (req: TechRequest, res: Response) => {
   try {
     const techId = req.user?.technician_id;
     const body = req.body as LocationBody;
@@ -243,6 +270,7 @@ const location = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -250,15 +278,13 @@ const location = async (req: TechRequest, res: Response) => {
   }
 };
 
-const acceptEmergency = async (req: TechRequest, res: Response) => {
+// 4. Fixed req.params.id type assertion
+export const acceptEmergency = async (req: TechRequest, res: Response) => {
   try {
     const techId = req.user?.technician_id;
-    const jobId: string = req.params.id;
+    const jobId = req.params.id as string;
 
-    const data = await technicianService.acceptEmergency(
-      techId,
-      jobId
-    );
+    const data = await technicianService.acceptEmergency(techId, jobId);
 
     return res.status(200).json({
       success: true,
@@ -267,6 +293,7 @@ const acceptEmergency = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -278,9 +305,10 @@ const acceptEmergency = async (req: TechRequest, res: Response) => {
 // 5. NOTIFICATIONS & COMPLETION
 // ======================================================
 
-const notifications = async (req: TechRequest, res: Response) => {
+export const notifications = async (req: TechRequest, res: Response) => {
   try {
     const userId = req.user?.user_id || req.user?.id;
+
     const data = await technicianService.getNotifications(userId);
 
     return res.status(200).json({
@@ -289,6 +317,7 @@ const notifications = async (req: TechRequest, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -296,9 +325,11 @@ const notifications = async (req: TechRequest, res: Response) => {
   }
 };
 
-const notificationRead = async (req: Request, res: Response) => {
+// 5. Fixed req.params.id type assertion
+export const notificationRead = async (req: Request, res: Response) => {
   try {
-    const notificationId: string = req.params.id;
+    const notificationId = req.params.id as string;
+
     const data = await technicianService.markNotificationRead(notificationId);
 
     return res.status(200).json({
@@ -308,6 +339,7 @@ const notificationRead = async (req: Request, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
@@ -315,9 +347,11 @@ const notificationRead = async (req: Request, res: Response) => {
   }
 };
 
-const completeJob = async (req: Request, res: Response) => {
+// 6. Fixed req.params.id type assertion
+export const completeJob = async (req: TechRequest, res: Response) => {
   try {
-    const jobId: string = req.params.id;
+    const jobId = req.params.id as string;
+
     const data = await technicianService.completeJob(jobId);
 
     return res.status(200).json({
@@ -327,23 +361,10 @@ const completeJob = async (req: Request, res: Response) => {
     });
   } catch (err) {
     const error = err as CustomError;
+
     return res.status(400).json({
       success: false,
       message: error.message || "Bad Request"
     });
   }
-};
-
-export {
-  jobs,
-  emergency,
-  accept,
-  reject,
-  jobStatus,
-  availability,
-  location,
-  acceptEmergency,
-  notifications,
-  notificationRead,
-  completeJob
 };

@@ -1,0 +1,110 @@
+"use strict";
+// const { supabaseAdmin } = require('../config/supabase');
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.markAllNotificationsRead = exports.getUnreadBadgeCount = exports.getNotifications = void 0;
+// Safe require for Supabase admin client
+const { supabaseAdmin } = require('../config/supabase');
+const buildNotifFilter = (role, userId) => {
+    const parts = [];
+    parts.push(`recipient_role.eq.ALL`); // broadcast-to-everyone notifications
+    if (role && userId) {
+        parts.push(`and(recipient_role.eq.${role},user_id.eq.${userId})`);
+    }
+    else if (role) {
+        parts.push(`recipient_role.eq.${role}`); // fallback: role-only queries
+    }
+    else if (userId) {
+        parts.push(`user_id.eq.${userId}`);
+    }
+    return parts.join(',');
+};
+// 1. Fetch Notifications with joined booking issue descriptions
+const getNotifications = async (req, res) => {
+    const { role, userId, notificationType } = req.query;
+    if (!role && !userId) {
+        return res.status(400).json({ error: 'role or userId is required' });
+    }
+    try {
+        let query = supabaseAdmin
+            .from('notifications')
+            .select('*, bookings(issue_description, service_problems(problem_name))')
+            .or(buildNotifFilter(role, userId))
+            .order('created_at', { ascending: false })
+            .limit(100);
+        if (notificationType && notificationType !== 'ALL') {
+            query = query.eq('notification_type', notificationType);
+        }
+        // Role-based filtering for notification types
+        if (role === 'TECHNICIAN') {
+            query = query.in('notification_type', ['Emergency', 'Assignment']);
+        }
+        else if (role === 'CUSTOMER') {
+            // Customers only see technician assignment details
+            query = query.eq('notification_type', 'Assignment');
+        }
+        const { data, error } = await query;
+        if (error)
+            throw error;
+        const rawList = data || [];
+        const notifications = rawList.map((notification) => ({
+            ...notification,
+            issue: notification.bookings?.service_problems?.problem_name ||
+                notification.bookings?.issue_description ||
+                null
+        }));
+        return res.status(200).json({ success: true, notifications });
+    }
+    catch (err) {
+        const error = err;
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+};
+exports.getNotifications = getNotifications;
+// 2. Fetch Unread Badge Count
+const getUnreadBadgeCount = async (req, res) => {
+    const { role, userId } = req.query;
+    if (!role && !userId) {
+        return res.status(400).json({ error: 'role or userId is required' });
+    }
+    try {
+        const { count, error } = await supabaseAdmin
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .or(buildNotifFilter(role, userId))
+            .eq('is_read', false);
+        if (error)
+            throw error;
+        return res.status(200).json({ unreadCount: count || 0 });
+    }
+    catch (err) {
+        const error = err;
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+};
+exports.getUnreadBadgeCount = getUnreadBadgeCount;
+// 3. Mark All Filtered Notifications as Read
+const markAllNotificationsRead = async (req, res) => {
+    const { role, userId } = req.body;
+    if (!role && !userId) {
+        return res.status(400).json({ error: 'role or userId is required' });
+    }
+    try {
+        const { error } = await supabaseAdmin
+            .from('notifications')
+            .update({ is_read: true })
+            .or(buildNotifFilter(role, userId));
+        if (error)
+            throw error;
+        return res.status(200).json({
+            success: true,
+            message: 'All notifications marked as read'
+        });
+    }
+    catch (err) {
+        const error = err;
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+};
+exports.markAllNotificationsRead = markAllNotificationsRead;
+module.exports = { getNotifications: exports.getNotifications, getUnreadBadgeCount: exports.getUnreadBadgeCount, markAllNotificationsRead: exports.markAllNotificationsRead };
+//# sourceMappingURL=notificationController.js.map
