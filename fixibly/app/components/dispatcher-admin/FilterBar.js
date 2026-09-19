@@ -11,7 +11,7 @@ const FilterBar = ({ filters, values, onChange }) => {
           key={f.key}
           value={values[f.key] || ""}
           onChange={(e) => onChange(f.key, e.target.value)}
-          className="ff-input !w-auto text-xs py-2 cursor-pointer"
+          className="ff-input w-auto! text-xs py-2 cursor-pointer"
         >
           <option value="">{f.label}</option>
           {f.options.map((opt) => (

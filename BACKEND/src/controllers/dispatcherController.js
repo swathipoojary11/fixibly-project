@@ -5,6 +5,12 @@ const { createNotification } = require('../services/notificationService');
 const { logAuditEvent } = require('../services/auditService');
 // const { data, error } = await supabaseAdmin
 
+const getBookingIssue = (booking) =>
+  booking?.service_problems?.problem_name
+  || booking?.service_problems?.[0]?.problem_name
+  || booking?.issue_description
+  || null;
+
 // 1. Assign Technician (Exchanges Customer & Technician Data + Notifies Admin)
 const assignTechnician = async (req, res) => {
   const { bookingId, technicianId, dispatcherUserId } = req.body;
@@ -351,7 +357,7 @@ const getDispatcherDashboardStats = async (req, res) => {
 
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
-      .select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(technician_id, rating, availability_status, category_id, users(full_name, phone, email))');
+      .select('*, service_problems(problem_name), customers:users!fk_booking_customer(full_name, phone, email), technicians(technician_id, rating, availability_status, category_id, users(full_name, phone, email))');
     if (bErr) throw bErr;
 
     const { data: technicians, error: tErr } = await supabaseAdmin
@@ -378,9 +384,11 @@ const getDispatcherDashboardStats = async (req, res) => {
         emergencyJobs: emergencyJobsList.length,
         cancelledToday: cancelledList.length
       },
-      bookings: bookings.filter(b => !b.emergency_flag && b.booking_status !== 'Cancelled'),
-      emergencies: emergencyJobsList,
-      cancelledBookings: cancelledList,
+      bookings: bookings
+        .filter(b => !b.emergency_flag && b.booking_status !== 'Cancelled')
+        .map(b => ({ ...b, issue: getBookingIssue(b) })),
+      emergencies: emergencyJobsList.map(b => ({ ...b, issue: getBookingIssue(b) })),
+      cancelledBookings: cancelledList.map(b => ({ ...b, issue: getBookingIssue(b) })),
       technicians
     });
   } catch (err) {
@@ -715,7 +723,7 @@ const getActiveBookingsWithLocation = async (req, res) => {
   try {
     const { data: bookings, error: bErr } = await supabaseAdmin
       .from('bookings')
-      .select('booking_id, booking_status, customer_id, technician_id, issue_description, category_id, preferred_date, preferred_time, house_number, street, area, city, pincode, customers:users!fk_booking_customer(full_name, phone), technicians(technician_id, users(full_name, phone))')
+      .select('booking_id, booking_status, customer_id, technician_id, issue_description, category_id, preferred_date, preferred_time, house_number, street, area, city, pincode, service_problems(problem_name), customers:users!fk_booking_customer(full_name, phone), technicians(technician_id, users(full_name, phone))')
       .not('booking_status', 'in', '(Completed,Cancelled)');
 
     if (bErr) throw bErr;
@@ -739,7 +747,7 @@ const getActiveBookingsWithLocation = async (req, res) => {
       technicianId: b.technician_id,
       technicianName: b.technicians?.users?.full_name || null,
       technicianPhone: b.technicians?.users?.phone || null,
-      issue: b.issue_description || null,
+      issue: getBookingIssue(b),
       address: [b.house_number, b.street, b.area, b.city].filter(Boolean).join(', '),
       location: locationMap[b.technician_id] ? {
         lat: locationMap[b.technician_id].latitude,

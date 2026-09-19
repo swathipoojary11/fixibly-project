@@ -45,7 +45,7 @@ const getAdminDashboardOverview = async (req, res) => {
       { data: notifications, error: nErr },
       { data: allUsers, error: uErr }
     ] = await Promise.all([
-      supabaseAdmin.from('bookings').select('*, customers:users!fk_booking_customer(full_name, phone, email), technicians(rating, category_id, users(full_name, phone))').order('created_at', { ascending: false }),
+      supabaseAdmin.from('bookings').select('*, service_problems(problem_name), customers:users!fk_booking_customer(full_name, phone, email), technicians(rating, category_id, users(full_name, phone))').order('created_at', { ascending: false }),
       supabaseAdmin.from('technicians').select('*, users(full_name, phone, email)').order('technician_id', { ascending: true }),
       supabaseAdmin.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(100),
       supabaseAdmin.from('notifications').select('*').order('created_at', { ascending: false }).limit(50),
