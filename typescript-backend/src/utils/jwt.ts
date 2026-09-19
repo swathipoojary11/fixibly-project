@@ -1,19 +1,22 @@
 const jwt = require("jsonwebtoken");
 
-// Generate JWT Token
-const generateToken = (user) => {
-    return jwt.sign(
-        {
-            user_id: user.user_id,
-            role_id: user.role_id
-        },
-        process.env.JWT_SECRET || "fieldflow123456789",
-        {
-            expiresIn: "1d"
-        }
-    );
+export type JwtUserPayload = {
+  user_id?: string | number;
+  role_id?: number;
+  [key: string]: any;
 };
 
-module.exports = {
-    generateToken
+export const generateToken = (user: JwtUserPayload): string => {
+  const secretKey: string = process.env.JWT_SECRET || "fieldflow123456789";
+
+  return jwt.sign(
+    {
+      user_id: user.user_id,
+      role_id: user.role_id
+    },
+    secretKey,
+    { expiresIn: "1d" }
+  );
 };
+
+export default { generateToken };

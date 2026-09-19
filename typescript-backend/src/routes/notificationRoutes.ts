@@ -1,10 +1,15 @@
-const express = require('express');
-const { getNotifications, getUnreadBadgeCount, markAllNotificationsRead } = require('../controllers/notificationController');
+import express, { Router } from 'express';
 
-const router = express.Router();
+import {
+  getNotifications,
+  getUnreadBadgeCount,
+  markAllNotificationsRead
+} from '../controllers/notificationController';
+
+const router: Router = express.Router();
 
 router.get('/', getNotifications);
 router.get('/unread-count', getUnreadBadgeCount);
 router.patch('/mark-read', markAllNotificationsRead);
 
-module.exports = router;
+export default router;

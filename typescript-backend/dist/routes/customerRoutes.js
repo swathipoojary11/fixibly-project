@@ -41,5 +41,5 @@ router.post("/platform-feedback", authenticateUser, authorizeRoles("Customer"), 
 // 14. Notifications
 router.get("/notifications", authenticateUser, authorizeRoles("Customer"), getNotifications);
 router.patch("/notifications/:notificationId/read", authenticateUser, authorizeRoles("Customer"), markNotificationRead);
-module.exports = router;
+exports.default = router;
 //# sourceMappingURL=customerRoutes.js.map

@@ -1,5 +1,6 @@
-const express = require('express');
-const {
+import express, { Router } from 'express';
+
+import {
   assignTechnician,
   reassignTechnician,
   updateBookingStatus,
@@ -13,11 +14,12 @@ const {
   getDispatcherProfile,
   getActiveBookingsWithLocation,
   acceptEmergencyBroadcast
-} = require('../controllers/dispatcherController');
-const { authenticateUser } = require("../middleware/authMiddleware");
-const authorizeRoles = require("../middleware/roleMiddleware");
-const router = express.Router();
+} from '../controllers/dispatcherController';
 
+import { authenticateUser } from '../middleware/authMiddleware';
+import { authorizeRoles } from '../middleware/roleMiddleware';
+
+const router: Router = express.Router();
 // Assign, Reassign & Lifecycle Routes
 router.patch('/assign', assignTechnician);
 router.patch('/reassign', reassignTechnician);
@@ -40,4 +42,5 @@ router.get('/active-with-location', getActiveBookingsWithLocation);
 // Manual Actions
 router.post('/manual-booking', createManualBooking);
 
-module.exports = router;
+// module.exports = router;
+export default router;

@@ -1,46 +1,53 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const { authenticateUser } = require("./middleware/authMiddleware");
-const authorizeRoles = require("./middleware/roleMiddleware");
-const authRoutes = require("./routes/authRoutes");
-const profileRoutes = require("./routes/profileRoutes");
-const adminRoutes = require("./routes/adminRoutes");
-const dispatcherRoutes = require("./routes/dispatcherRoutes");
-const technicianRoutes = require("./routes/technicianRoutes");
-const notificationRoutes = require("./routes/notificationRoutes");
-const customerRoutes = require("./routes/customerRoutes");
+const authMiddleware_1 = require("./middleware/authMiddleware");
+// Route Imports (Default imports from your migrated router files)
+const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
+const profileRoutes_1 = __importDefault(require("./routes/profileRoutes"));
+const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
+const dispatcherRoutes_1 = __importDefault(require("./routes/dispatcherRoutes"));
+const technicianRoutes_1 = __importDefault(require("./routes/technicianRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
+const customerRoutes_1 = __importDefault(require("./routes/customerRoutes"));
+// 1. Initialize Express Application with explicit type
 const app = express();
+// 2. Global Middleware
 app.use(cors());
 app.use(express.json());
-// Root test route
+// 3. Root Health Check Route
 app.get("/", (req, res) => {
-    res.json({
+    return res.json({
         success: true,
         message: "Fixibly FieldFlow Backend Running Successfully 🚀"
     });
 });
-// Mount Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/dispatcher", dispatcherRoutes);
-app.use("/api/technician", technicianRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/customer", customerRoutes);
-// Protected Test Route
-app.get("/api/protected", authenticateUser, (req, res) => {
-    res.json({
+// 4. Mount API Routes
+app.use("/api/auth", authRoutes_1.default);
+app.use("/api/profile", profileRoutes_1.default);
+app.use("/api/admin", adminRoutes_1.default);
+app.use("/api/dispatcher", dispatcherRoutes_1.default);
+app.use("/api/technician", technicianRoutes_1.default);
+app.use("/api/notifications", notificationRoutes_1.default);
+app.use("/api/customer", customerRoutes_1.default);
+// 5. Protected Test Route (Uses AuthRequest so TS knows req.user exists)
+app.get("/api/protected", authMiddleware_1.authenticateUser, (req, res) => {
+    return res.json({
         success: true,
         message: "You have accessed a protected route.",
         user: req.user
     });
 });
-const PORT = process.env.PORT || 5000;
+// 6. Server Initialization
+const PORT = Number(process.env.PORT) || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-module.exports = app;
+// 7. Export application instance
+exports.default = app;
 //# sourceMappingURL=index.js.map

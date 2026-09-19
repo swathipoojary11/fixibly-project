@@ -1,13 +1,15 @@
-const express = require('express');
-const {
+// backend/src/routes/adminRoutes.ts
+import express, { Router } from 'express';
+
+import {
   getAdminDashboardOverview,
   getAdminDashboardStats,
   getAdminReports,
   getAdminDashboardAnalytics,
   getAdminUsers
-} = require('../controllers/adminController');
+} from '../controllers/adminController';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 router.get('/overview', getAdminDashboardOverview);
 router.get('/stats', getAdminDashboardStats);
@@ -15,4 +17,4 @@ router.get('/reports', getAdminReports);
 router.get('/dashboard-analytics', getAdminDashboardAnalytics);
 router.get('/users', getAdminUsers);
 
-module.exports = router;
+export default router;

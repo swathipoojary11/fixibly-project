@@ -1,10 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateServiceCategory = exports.getServiceCategories = exports.completeJob = exports.markNotificationRead = exports.getNotifications = exports.updateJobStatus = exports.updateLocation = exports.updateAvailability = exports.acceptEmergency = exports.rejectJob = exports.acceptJob = exports.getEmergencyJobs = exports.getJobs = exports.getProfile = void 0;
 const supabase = require("../config/supabase");
-// =========================
-// PROFILE
-// =========================
+// ==========================================
+// 2. PROFILE
+// ==========================================
 const getProfile = async (userId) => {
+    if (!userId)
+        throw new Error("USER_ID_REQUIRED");
     const { data: technician, error } = await supabase
         .from("technicians")
         .select("*")
@@ -28,18 +31,22 @@ const getProfile = async (userId) => {
         category
     };
 };
-// =========================
-// ASSIGNED JOBS
-// =========================
+exports.getProfile = getProfile;
+// ==========================================
+// 3. ASSIGNED JOBS
+// ==========================================
 const getJobs = async (technicianId) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data: bookings, error } = await supabase
         .from("bookings")
         .select("*")
         .eq("technician_id", technicianId);
     if (error)
         throw error;
+    const rawBookings = bookings || [];
     const result = [];
-    for (const booking of bookings) {
+    for (const booking of rawBookings) {
         const { data: customer } = await supabase
             .from("users")
             .select("full_name,email,phone,address")
@@ -68,9 +75,10 @@ const getJobs = async (technicianId) => {
     }
     return result;
 };
-// =========================
-// EMERGENCY JOBS
-// =========================
+exports.getJobs = getJobs;
+// ==========================================
+// 4. EMERGENCY JOBS
+// ==========================================
 const getEmergencyJobs = async () => {
     const { data, error } = await supabase
         .from("bookings")
@@ -80,17 +88,20 @@ const getEmergencyJobs = async () => {
         .is("technician_id", null);
     if (error)
         throw error;
-    return data;
+    return data || [];
 };
-// =========================
-// ACCEPT JOB
-// =========================
+exports.getEmergencyJobs = getEmergencyJobs;
+// ==========================================
+// 5. ACCEPT JOB
+// ==========================================
 const acceptJob = async (technicianId, bookingId) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data, error } = await supabase
         .from("bookings")
         .update({
         booking_status: "Accepted",
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
     })
         .eq("booking_id", bookingId)
         .eq("technician_id", technicianId)
@@ -107,16 +118,19 @@ const acceptJob = async (technicianId, bookingId) => {
         .insert({ booking_id: bookingId, status: "Accepted" });
     return data;
 };
-// =========================
-// REJECT JOB
-// =========================
+exports.acceptJob = acceptJob;
+// ==========================================
+// 6. REJECT JOB
+// ==========================================
 const rejectJob = async (technicianId, bookingId) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data, error } = await supabase
         .from("bookings")
         .update({
         technician_id: null,
         booking_status: "Pending",
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
     })
         .eq("booking_id", bookingId)
         .eq("technician_id", technicianId)
@@ -130,16 +144,19 @@ const rejectJob = async (technicianId, bookingId) => {
         .eq("technician_id", technicianId);
     return data;
 };
-// =========================
-// ACCEPT EMERGENCY JOB
-// =========================
+exports.rejectJob = rejectJob;
+// ==========================================
+// 7. ACCEPT EMERGENCY JOB
+// ==========================================
 const acceptEmergency = async (technicianId, bookingId) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data, error } = await supabase
         .from("bookings")
         .update({
         technician_id: technicianId,
         booking_status: "Accepted",
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
     })
         .eq("booking_id", bookingId)
         .eq("booking_status", "Pending")
@@ -160,13 +177,19 @@ const acceptEmergency = async (technicianId, bookingId) => {
         .insert({ booking_id: bookingId, status: "Accepted" });
     return data;
 };
-// =========================
-// UPDATE AVAILABILITY
-// =========================
+exports.acceptEmergency = acceptEmergency;
+// ==========================================
+// 8. UPDATE AVAILABILITY
+// ==========================================
 const updateAvailability = async (technicianId, status) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data, error } = await supabase
         .from("technicians")
-        .update({ availability_status: status, updated_at: new Date() })
+        .update({
+        availability_status: status || "Available",
+        updated_at: new Date().toISOString()
+    })
         .eq("technician_id", technicianId)
         .select()
         .single();
@@ -174,17 +197,20 @@ const updateAvailability = async (technicianId, status) => {
         throw error;
     return data;
 };
-// =========================
-// UPDATE LOCATION
-// =========================
+exports.updateAvailability = updateAvailability;
+// ==========================================
+// 9. UPDATE LOCATION
+// ==========================================
 const updateLocation = async (technicianId, latitude, longitude) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data, error } = await supabase
         .from("technician_locations")
         .upsert({
         technician_id: technicianId,
-        latitude,
-        longitude,
-        updated_at: new Date()
+        latitude: Number(latitude) || 0,
+        longitude: Number(longitude) || 0,
+        updated_at: new Date().toISOString()
     }, { onConflict: "technician_id" })
         .select()
         .single();
@@ -192,13 +218,17 @@ const updateLocation = async (technicianId, latitude, longitude) => {
         throw error;
     return data;
 };
-// =========================
-// UPDATE JOB STATUS
-// =========================
+exports.updateLocation = updateLocation;
+// ==========================================
+// 10. UPDATE JOB STATUS
+// ==========================================
 const updateJobStatus = async (bookingId, status) => {
     const { data, error } = await supabase
         .from("bookings")
-        .update({ booking_status: status, updated_at: new Date() })
+        .update({
+        booking_status: status,
+        updated_at: new Date().toISOString()
+    })
         .eq("booking_id", bookingId)
         .select()
         .single();
@@ -209,10 +239,13 @@ const updateJobStatus = async (bookingId, status) => {
         .insert({ booking_id: bookingId, status });
     return data;
 };
-// =========================
-// GET NOTIFICATIONS
-// =========================
+exports.updateJobStatus = updateJobStatus;
+// ==========================================
+// 11. GET NOTIFICATIONS
+// ==========================================
 const getNotifications = async (userId) => {
+    if (!userId)
+        throw new Error("USER_ID_REQUIRED");
     const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -220,11 +253,12 @@ const getNotifications = async (userId) => {
         .order("created_at", { ascending: false });
     if (error)
         throw error;
-    return data;
+    return data || [];
 };
-// =========================
-// MARK NOTIFICATION READ
-// =========================
+exports.getNotifications = getNotifications;
+// ==========================================
+// 12. MARK NOTIFICATION READ
+// ==========================================
 const markNotificationRead = async (notificationId) => {
     const { data, error } = await supabase
         .from("notifications")
@@ -236,9 +270,10 @@ const markNotificationRead = async (notificationId) => {
         throw error;
     return data;
 };
-// =========================
-// COMPLETE JOB
-// =========================
+exports.markNotificationRead = markNotificationRead;
+// ==========================================
+// 13. COMPLETE JOB
+// ==========================================
 const completeJob = async (bookingId) => {
     const { data: booking, error: bookingError } = await supabase
         .from("bookings")
@@ -247,7 +282,7 @@ const completeJob = async (bookingId) => {
         .single();
     if (bookingError)
         throw bookingError;
-    if (!booking.customer_completed_flag) {
+    if (!booking?.customer_completed_flag) {
         throw new Error("Customer has not confirmed completion.");
     }
     const { data, error } = await supabase
@@ -255,7 +290,7 @@ const completeJob = async (bookingId) => {
         .update({
         booking_status: "Completed",
         technician_completed_flag: true,
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
     })
         .eq("booking_id", bookingId)
         .select()
@@ -267,9 +302,10 @@ const completeJob = async (bookingId) => {
         .insert({ booking_id: bookingId, status: "Completed" });
     return data;
 };
-// =========================
-// GET ALL SERVICE CATEGORIES
-// =========================
+exports.completeJob = completeJob;
+// ==========================================
+// 14. SERVICE CATEGORIES
+// ==========================================
 const getServiceCategories = async () => {
     const { data, error } = await supabase
         .from("service_categories")
@@ -278,15 +314,18 @@ const getServiceCategories = async () => {
         .order("category_name");
     if (error)
         throw error;
-    return data;
+    return data || [];
 };
-// =========================
-// UPDATE SERVICE CATEGORY
-// =========================
+exports.getServiceCategories = getServiceCategories;
 const updateServiceCategory = async (technicianId, categoryId) => {
+    if (!technicianId)
+        throw new Error("TECHNICIAN_ID_REQUIRED");
     const { data, error } = await supabase
         .from("technicians")
-        .update({ category_id: categoryId, updated_at: new Date() })
+        .update({
+        category_id: categoryId,
+        updated_at: new Date().toISOString()
+    })
         .eq("technician_id", technicianId)
         .select()
         .single();
@@ -294,23 +333,22 @@ const updateServiceCategory = async (technicianId, categoryId) => {
         throw error;
     return data;
 };
-// =========================
-// EXPORTS
-// =========================
-module.exports = {
-    getProfile,
-    getJobs,
-    getEmergencyJobs,
-    acceptJob,
-    rejectJob,
-    updateAvailability,
-    updateLocation,
-    updateJobStatus,
-    acceptEmergency,
-    getNotifications,
-    markNotificationRead,
-    completeJob,
-    getServiceCategories,
-    updateServiceCategory
+exports.updateServiceCategory = updateServiceCategory;
+// Default export bundle so `import technicianService from ...` also works
+exports.default = {
+    getProfile: exports.getProfile,
+    getJobs: exports.getJobs,
+    getEmergencyJobs: exports.getEmergencyJobs,
+    acceptJob: exports.acceptJob,
+    rejectJob: exports.rejectJob,
+    updateAvailability: exports.updateAvailability,
+    updateLocation: exports.updateLocation,
+    updateJobStatus: exports.updateJobStatus,
+    acceptEmergency: exports.acceptEmergency,
+    getNotifications: exports.getNotifications,
+    markNotificationRead: exports.markNotificationRead,
+    completeJob: exports.completeJob,
+    getServiceCategories: exports.getServiceCategories,
+    updateServiceCategory: exports.updateServiceCategory
 };
 //# sourceMappingURL=technicianService.js.map

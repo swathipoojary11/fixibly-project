@@ -1,17 +1,20 @@
-const bcrypt = require("bcrypt");
+import bcrypt from "bcrypt";
 
 // Encrypt password
-const hashPassword = async (password) => {
-  const saltRounds = 10;
+export const hashPassword = async (password: string): Promise<string> => {
+  const saltRounds: number = 10;
   return await bcrypt.hash(password, saltRounds);
 };
 
 // Compare entered password with encrypted password
-const comparePassword = async (password, hashedPassword) => {
+export const comparePassword = async (
+  password: string,
+  hashedPassword: string
+): Promise<boolean> => {
   return await bcrypt.compare(password, hashedPassword);
 };
 
-module.exports = {
+export default {
   hashPassword,
-  comparePassword,
+  comparePassword
 };
