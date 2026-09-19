@@ -3,11 +3,7 @@
 
 import { Request, Response, NextFunction } from "express";
 
-// ==========================================
-// 1. DATA TYPES (Sir's `type ...` pattern)
-// ==========================================
 
-// IDs can arrive as numbers (1, 2) or strings ("101", UUID)
 type IdType = string | number;
 
 // The structure of the incoming request body for booking creation
@@ -30,9 +26,6 @@ type BookingRequestBody = {
   pincode?: string;
 };
 
-// ==========================================
-// 2. VALIDATOR MIDDLEWARE
-// ==========================================
 
 export const validateBooking = (
   req: Request,
