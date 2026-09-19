@@ -3,9 +3,6 @@
 // Express middleware validating incoming customer booking payloads.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateBooking = void 0;
-// ==========================================
-// 2. VALIDATOR MIDDLEWARE
-// ==========================================
 const validateBooking = (req, res, next) => {
     // Cast req.body to our explicit BookingRequestBody type
     const body = req.body;
