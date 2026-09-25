@@ -1,9 +1,10 @@
-const supabase = require("../config/supabase");
+import supabase from "../config/supabase.js";
 
 // =========================
 // PROFILE
 // =========================
-const getProfile = async (userId) => {
+
+const getProfile = async (userId: number) => {
     const { data: technician, error } = await supabase
         .from("technicians")
         .select("*")
@@ -31,10 +32,12 @@ const getProfile = async (userId) => {
     };
 };
 
+
 // =========================
 // ASSIGNED JOBS
 // =========================
-const getJobs = async (technicianId) => {
+
+const getJobs = async (technicianId: number) => {
     const { data: bookings, error } = await supabase
         .from("bookings")
         .select("*")
@@ -44,7 +47,8 @@ const getJobs = async (technicianId) => {
 
     const result = [];
 
-    for (const booking of bookings) {
+    for (const booking of bookings ?? []) {
+
         const { data: customer } = await supabase
             .from("users")
             .select("full_name,email,phone,address")
@@ -80,9 +84,11 @@ const getJobs = async (technicianId) => {
     return result;
 };
 
+
 // =========================
 // EMERGENCY JOBS
 // =========================
+
 const getEmergencyJobs = async () => {
     const { data, error } = await supabase
         .from("bookings")
@@ -96,10 +102,16 @@ const getEmergencyJobs = async () => {
     return data;
 };
 
+
 // =========================
 // ACCEPT JOB
 // =========================
-const acceptJob = async (technicianId, bookingId) => {
+
+const acceptJob = async (
+    technicianId: number,
+    bookingId: string
+) => {
+
     const { data, error } = await supabase
         .from("bookings")
         .update({
@@ -115,20 +127,31 @@ const acceptJob = async (technicianId, bookingId) => {
 
     await supabase
         .from("technicians")
-        .update({ availability_status: "Busy" })
+        .update({
+            availability_status: "Busy"
+        })
         .eq("technician_id", technicianId);
 
     await supabase
         .from("booking_status_history")
-        .insert({ booking_id: bookingId, status: "Accepted" });
+        .insert({
+            booking_id: bookingId,
+            status: "Accepted"
+        });
 
     return data;
 };
 
+
 // =========================
 // REJECT JOB
 // =========================
-const rejectJob = async (technicianId, bookingId) => {
+
+const rejectJob = async (
+    technicianId: number,
+    bookingId: string
+) => {
+
     const { data, error } = await supabase
         .from("bookings")
         .update({
@@ -145,16 +168,24 @@ const rejectJob = async (technicianId, bookingId) => {
 
     await supabase
         .from("technicians")
-        .update({ availability_status: "Available" })
+        .update({
+            availability_status: "Available"
+        })
         .eq("technician_id", technicianId);
 
     return data;
 };
 
+
 // =========================
 // ACCEPT EMERGENCY JOB
 // =========================
-const acceptEmergency = async (technicianId, bookingId) => {
+
+const acceptEmergency = async (
+    technicianId: number,
+    bookingId: string
+) => {
+
     const { data, error } = await supabase
         .from("bookings")
         .update({
@@ -169,29 +200,46 @@ const acceptEmergency = async (technicianId, bookingId) => {
         .single();
 
     if (error) throw error;
+
     if (!data) {
-        throw new Error("This emergency job was already claimed by another technician.");
+        throw new Error(
+            "This emergency job was already claimed by another technician."
+        );
     }
 
     await supabase
         .from("technicians")
-        .update({ availability_status: "Busy" })
+        .update({
+            availability_status: "Busy"
+        })
         .eq("technician_id", technicianId);
 
     await supabase
         .from("booking_status_history")
-        .insert({ booking_id: bookingId, status: "Accepted" });
+        .insert({
+            booking_id: bookingId,
+            status: "Accepted"
+        });
 
     return data;
 };
 
+
 // =========================
 // UPDATE AVAILABILITY
 // =========================
-const updateAvailability = async (technicianId, status) => {
+
+const updateAvailability = async (
+    technicianId: number,
+    status: string
+) => {
+
     const { data, error } = await supabase
         .from("technicians")
-        .update({ availability_status: status, updated_at: new Date() })
+        .update({
+            availability_status: status,
+            updated_at: new Date()
+        })
         .eq("technician_id", technicianId)
         .select()
         .single();
@@ -201,10 +249,17 @@ const updateAvailability = async (technicianId, status) => {
     return data;
 };
 
+
 // =========================
 // UPDATE LOCATION
 // =========================
-const updateLocation = async (technicianId, latitude, longitude) => {
+
+const updateLocation = async (
+    technicianId: number,
+    latitude: number,
+    longitude: number
+) => {
+
     const { data, error } = await supabase
         .from("technician_locations")
         .upsert(
@@ -214,7 +269,9 @@ const updateLocation = async (technicianId, latitude, longitude) => {
                 longitude,
                 updated_at: new Date()
             },
-            { onConflict: "technician_id" }
+            {
+                onConflict: "technician_id"
+            }
         )
         .select()
         .single();
@@ -224,13 +281,22 @@ const updateLocation = async (technicianId, latitude, longitude) => {
     return data;
 };
 
+
 // =========================
 // UPDATE JOB STATUS
 // =========================
-const updateJobStatus = async (bookingId, status) => {
+
+const updateJobStatus = async (
+    bookingId: string,
+    status: string
+) => {
+
     const { data, error } = await supabase
         .from("bookings")
-        .update({ booking_status: status, updated_at: new Date() })
+        .update({
+            booking_status: status,
+            updated_at: new Date()
+        })
         .eq("booking_id", bookingId)
         .select()
         .single();
@@ -239,33 +305,50 @@ const updateJobStatus = async (bookingId, status) => {
 
     await supabase
         .from("booking_status_history")
-        .insert({ booking_id: bookingId, status });
+        .insert({
+            booking_id: bookingId,
+            status
+        });
 
     return data;
 };
 
+
 // =========================
 // GET NOTIFICATIONS
 // =========================
-const getNotifications = async (userId) => {
+
+const getNotifications = async (userId: number) => {
+
     const { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .or(`user_id.eq.${userId},recipient_role.eq.TECHNICIAN,recipient_role.eq.ALL`)
-        .order("created_at", { ascending: false });
+        .or(
+            `user_id.eq.${userId},recipient_role.eq.TECHNICIAN,recipient_role.eq.ALL`
+        )
+        .order("created_at", {
+            ascending: false
+        });
 
     if (error) throw error;
 
     return data;
 };
 
+
 // =========================
 // MARK NOTIFICATION READ
 // =========================
-const markNotificationRead = async (notificationId) => {
+
+const markNotificationRead = async (
+    notificationId: string
+) => {
+
     const { data, error } = await supabase
         .from("notifications")
-        .update({ is_read: true })
+        .update({
+            is_read: true
+        })
         .eq("notification_id", notificationId)
         .select()
         .single();
@@ -275,11 +358,19 @@ const markNotificationRead = async (notificationId) => {
     return data;
 };
 
+
 // =========================
 // COMPLETE JOB
 // =========================
-const completeJob = async (bookingId) => {
-    const { data: booking, error: bookingError } = await supabase
+
+const completeJob = async (
+    bookingId: string
+) => {
+
+    const {
+        data: booking,
+        error: bookingError
+    } = await supabase
         .from("bookings")
         .select("customer_completed_flag")
         .eq("booking_id", bookingId)
@@ -288,7 +379,9 @@ const completeJob = async (bookingId) => {
     if (bookingError) throw bookingError;
 
     if (!booking.customer_completed_flag) {
-        throw new Error("Customer has not confirmed completion.");
+        throw new Error(
+            "Customer has not confirmed completion."
+        );
     }
 
     const { data, error } = await supabase
@@ -306,15 +399,21 @@ const completeJob = async (bookingId) => {
 
     await supabase
         .from("booking_status_history")
-        .insert({ booking_id: bookingId, status: "Completed" });
+        .insert({
+            booking_id: bookingId,
+            status: "Completed"
+        });
 
     return data;
 };
 
+
 // =========================
 // GET ALL SERVICE CATEGORIES
 // =========================
+
 const getServiceCategories = async () => {
+
     const { data, error } = await supabase
         .from("service_categories")
         .select("category_id, category_name")
@@ -326,13 +425,22 @@ const getServiceCategories = async () => {
     return data;
 };
 
+
 // =========================
 // UPDATE SERVICE CATEGORY
 // =========================
-const updateServiceCategory = async (technicianId, categoryId) => {
+
+const updateServiceCategory = async (
+    technicianId: number,
+    categoryId: number
+) => {
+
     const { data, error } = await supabase
         .from("technicians")
-        .update({ category_id: categoryId, updated_at: new Date() })
+        .update({
+            category_id: categoryId,
+            updated_at: new Date()
+        })
         .eq("technician_id", technicianId)
         .select()
         .single();
@@ -342,10 +450,12 @@ const updateServiceCategory = async (technicianId, categoryId) => {
     return data;
 };
 
+
 // =========================
 // EXPORTS
 // =========================
-module.exports = {
+
+export {
     getProfile,
     getJobs,
     getEmergencyJobs,

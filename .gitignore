@@ -9,3 +9,5 @@
 
 # Other ignored files
 **.log
+
+dist/

@@ -1,7 +1,22 @@
-const supabase = require("../config/supabase");
+import { Request, Response } from "express";
+import supabase from "../config/supabase.js";
 
-// Get Logged-in User Profile
-const getProfile = async (req, res) => {
+interface AuthenticatedUser {
+    user_id: number;
+}
+
+interface AuthenticatedRequest extends Request {
+    user: AuthenticatedUser;
+}
+
+// =========================
+// GET LOGGED-IN USER PROFILE
+// =========================
+
+const getProfile = async (
+    req: AuthenticatedRequest,
+    res: Response
+) => {
     try {
 
         const userId = req.user.user_id;
@@ -29,24 +44,36 @@ const getProfile = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             user: data
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
 
-        res.status(500).json({
+        const message =
+            err instanceof Error
+                ? err.message
+                : "Something went wrong.";
+
+        return res.status(500).json({
             success: false,
-            message: err.message
+            message
         });
-
     }
 };
 
-// Update Logged-in User Profile
-const updateProfile = async (req, res) => {
+
+// =========================
+// UPDATE LOGGED-IN USER PROFILE
+// =========================
+
+const updateProfile = async (
+    req: AuthenticatedRequest,
+    res: Response
+) => {
     try {
+
         const userId = req.user.user_id;
 
         const {
@@ -90,24 +117,32 @@ const updateProfile = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Profile updated successfully.",
             user: data
         });
 
-    } catch (err) {
+    } catch (err: unknown) {
 
-        res.status(500).json({
+        const message =
+            err instanceof Error
+                ? err.message
+                : "Something went wrong.";
+
+        return res.status(500).json({
             success: false,
-            message: err.message
+            message
         });
-
     }
 };
 
 
-module.exports = {
+// =========================
+// EXPORTS
+// =========================
+
+export {
     getProfile,
     updateProfile
 };
