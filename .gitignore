@@ -7,5 +7,8 @@
 # Next build files
 **/.next/
 
+# TypeScript build output
+**/dist/
+
 # Other ignored files
 **.log

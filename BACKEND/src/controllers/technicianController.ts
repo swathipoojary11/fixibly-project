@@ -1,4 +1,4 @@
-import * as technicianService from "../services/technicianService.js";
+const technicianService = require("../services/technicianService");
 
 // ======================================================
 // PROFILE

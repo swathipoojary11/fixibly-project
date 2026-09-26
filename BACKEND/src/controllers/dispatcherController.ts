@@ -281,7 +281,7 @@ const updateBookingStatus = async (req, res) => {
       .eq('booking_id', bookingId)
       .single();
 
-    const updatePayload = {
+    const updatePayload: Record<string, unknown> = {
       booking_status: status,
       updated_at: new Date().toISOString()
     };
