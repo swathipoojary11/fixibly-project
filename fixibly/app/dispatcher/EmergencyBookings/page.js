@@ -30,7 +30,7 @@ const AssignModal = ({ booking, techs, onAssign, onClose }) => {
           <div className="p-4 border-b border-gray-100 shrink-0">
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search technician..." className="ff-input pl-9" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search technician..." className="ff-input !pl-10 w-full" />
             </div>
           </div>
           <div className="overflow-y-auto flex-1 p-4 space-y-3">

@@ -37,6 +37,11 @@ const NotificationCard = ({ notification, onMarkRead }) => {
                                 {notification.title}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">{notification.description}</p>
+                            {notification.issue && (
+                                <p className="text-xs font-semibold text-dark-700 mt-2">
+                                    Issue: {notification.issue}
+                                </p>
+                            )}
                         </div>
                         {!notification.read && (
                             <button

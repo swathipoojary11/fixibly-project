@@ -315,6 +315,8 @@ import CancelledBookings from "../CancelledBookings/page";
 import DispatcherNotifications from "../DispatcherNotification/page";
 import { useDispatcherStore as useAppStore } from "../DispatcherStore";
 import ProfileCard from "../../components/ProfileCard";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const navItems = [
   { key: "dashboard",     label: "Dashboard",         icon: FiGrid },
   { key: "bookings",      label: "View Bookings",     icon: FiCalendar },
@@ -334,13 +336,30 @@ const DispatcherApp = () => {
   const { dispNotifs, loading, fetchError } = useAppStore();
 
   React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setDispatcherProfile(parsed);
+    const loadDispatcherProfile = async () => {
+      try {
+        const stored = localStorage.getItem('user');
+        const cachedProfile = stored ? JSON.parse(stored) : null;
+        if (cachedProfile) setDispatcherProfile(cachedProfile);
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API}/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok && data.success && data.user) {
+          const profile = { ...cachedProfile, ...data.user };
+          setDispatcherProfile(profile);
+          localStorage.setItem('user', JSON.stringify(profile));
+        }
+      } catch (error) {
+        console.error("Failed to load dispatcher profile:", error);
       }
-    } catch {}
+    };
+
+    loadDispatcherProfile();
   }, []);
   const unreadCount = dispNotifs.filter(n => !n.read).length;
   const goBack = () => setActivePage("dashboard");

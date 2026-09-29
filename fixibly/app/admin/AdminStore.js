@@ -94,7 +94,7 @@ export function AdminStoreProvider({ children }) {
                         technicianName: b.technician_name || b.technicians?.users?.full_name || null,
                         createdAt: b.created_at,
                         scheduledAt: b.preferred_date || b.created_at,
-                        issue: b.issue_description || ""
+                        issue: b.issue || b.service_problems?.problem_name || b.service_problems?.[0]?.problem_name || b.issue_description || ""
                     });
 
                     const rawBookings = overviewRes.bookings || [];

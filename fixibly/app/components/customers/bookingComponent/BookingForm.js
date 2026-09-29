@@ -14,6 +14,7 @@ export default function BookingForm({ categoryId }) {
   const [categoryData, setCategoryData] = useState(null);
   const [problemsList, setProblemsList] = useState([]);
   const [customerInfo, setCustomerInfo] = useState({
+    customer_id: null,
     full_name: '',
     email: '',
     phone: ''
@@ -118,7 +119,9 @@ export default function BookingForm({ categoryId }) {
           setProblemsList(result.data.problems || []);
 
           if (result.data.customer) {
+              console.log("CUSTOMER DATA FROM BACKEND:", result.data.customer);
             setCustomerInfo({
+              customer_id: result.data.customer.user_id, 
               full_name: result.data.customer.full_name || '',
               email: result.data.customer.email || '',
               phone: result.data.customer.phone || ''
@@ -159,6 +162,7 @@ export default function BookingForm({ categoryId }) {
             Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
+
             problemId: selectedProblemId ? Number(selectedProblemId) : null,
             isCustomProblem,
             emergencyFlag
@@ -187,6 +191,7 @@ export default function BookingForm({ categoryId }) {
     const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
 
     const payload = {
+        customerId: customerInfo.customer_id,
       categoryId: Number(categoryId),
       problemId: isCustomProblem || !selectedProblemId ? null : Number(selectedProblemId),
       isCustomProblem,
@@ -204,7 +209,7 @@ export default function BookingForm({ categoryId }) {
       city: (address.city || 'Mangalore').substring(0, 90),
       pincode: (address.pincode || '').substring(0, 10)
     };
-
+    console.log("BOOKING PAYLOAD:", payload);
     try {
       const res = await fetch('http://localhost:5000/api/customer/bookings', {
         method: 'POST',

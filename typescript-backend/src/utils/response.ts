@@ -1,0 +1,30 @@
+import { Response } from "express";
+
+export const successResponse = (
+  res: Response,
+  statusCode: number,
+  message: string,
+  data: any = null
+) => {
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    ...(data !== null && data !== undefined && { data })
+  });
+};
+
+export const errorResponse = (
+  res: Response,
+  statusCode: number,
+  message: string
+) => {
+  return res.status(statusCode).json({
+    success: false,
+    message
+  });
+};
+
+export default {
+  successResponse,
+  errorResponse
+};

@@ -89,7 +89,7 @@ const TechnicianSelectModal = ({ booking, techs, onAssign, onClose }) => {
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 placeholder="Search technician by name..."
-                                className="ff-input pl-9 bg-white w-full"
+                                className="ff-input !pl-10 bg-white w-full"
                             />
                         </div>
                         <button
